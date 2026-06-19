@@ -4,6 +4,7 @@
       v-for="group in groupStageData"
       :key="group.group"
       :group="group"
+      :scores="scores"
     />
   </div>
 </template>
@@ -14,6 +15,11 @@ import GroupSection from './GroupSection.vue'
 
 export default {
   components: { GroupSection },
+
+  props: {
+    scores: { type: Object, default: () => ({}) },
+  },
+
   data() {
     return { groupStageData }
   },

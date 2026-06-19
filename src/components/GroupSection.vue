@@ -6,6 +6,7 @@
       v-for="match in group.matches"
       :key="match.matchId"
       :match="match"
+      :scores="scores"
     />
   </section>
 </template>
@@ -18,7 +19,8 @@ export default {
   components: { GroupMatch },
 
   props: {
-    group: { type: Object, required: true },
+    group:  { type: Object, required: true },
+    scores: { type: Object, default: () => ({}) },
   },
 
   computed: {

@@ -9,6 +9,7 @@
           :key="match.matchNumber"
           :match="match"
           :assignments="slotAssignments"
+          :scores="scores"
           @edit-slot="openEditor"
         />
       </section>
@@ -32,6 +33,10 @@ import SlotEditor     from './SlotEditor.vue'
 
 export default {
   components: { KnockoutMatch, SlotEditor },
+
+  props: {
+    scores: { type: Object, default: () => ({}) },
+  },
 
   data() {
     return {

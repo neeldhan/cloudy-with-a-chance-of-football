@@ -242,6 +242,40 @@ h1 {
   border-bottom: none;
 }
 
+/* ── Live scores ── */
+
+.match-score {
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  padding: 0.15rem 0 0.05rem;
+  letter-spacing: 0.04em;
+}
+
+.score-sep {
+  margin: 0 0.3rem;
+  opacity: 0.5;
+}
+
+.score-live {
+  display: inline-block;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  letter-spacing: 0.08em;
+  animation: blink 1.5s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
 /* ── Winner highlight ── */
 
 .winner {
@@ -294,7 +328,7 @@ h1 {
   border: 1px solid rgba(148, 163, 184, 0.8);
   background: #020617;
   color: #e5e7eb;
-  font-size: 0.9rem;
+  font-size: 1rem; /* must be ≥16px to prevent iOS auto-zoom */
   outline: none;
 }
 
@@ -330,10 +364,48 @@ h1 {
   border: 1px solid rgba(148, 163, 184, 0.7);
 }
 
+/* ── Long-press hint on touch devices ── */
+.team-slot {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 768px) {
-  .round      { min-width: 230px; }
+  .round      { min-width: 210px; }
   .team-note  { display: none; }
   .schedule-grid { grid-template-columns: 1fr; }
+
+  /* Larger tap targets for team names */
+  .group-match .team-name {
+    padding: 0.4rem 0;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Larger tap targets for bracket slots */
+  .team-slot {
+    display: inline-block;
+    min-height: 36px;
+    line-height: 36px;
+    padding: 0 0.25rem;
+  }
+
+  /* Ensure overlay is scrollable on small screens */
+  .overlay {
+    align-items: flex-start;
+    padding: 1.5rem 0;
+    overflow-y: auto;
+  }
+
+  .editor-panel {
+    margin: auto;
+  }
+
+  /* Slightly larger match card text on mobile */
+  .match-header {
+    font-size: 0.82rem;
+  }
 }

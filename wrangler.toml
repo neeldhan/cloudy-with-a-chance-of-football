@@ -1,0 +1,7 @@
+name            = "wc26-scores"
+main            = "workers/scores.js"
+compatibility_date = "2025-06-01"
+
+# FOOTBALL_DATA_API_KEY is NOT stored here.
+# Set it once with:  wrangler secret put FOOTBALL_DATA_API_KEY
+# Then paste your key when prompted. Cloudflare encrypts it.
