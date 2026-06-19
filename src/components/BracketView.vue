@@ -1,19 +1,20 @@
 <template>
-  <div class="bracket">
-    <section class="round" v-for="round in bracketData" :key="round.id">
-      <h2 class="round-title">{{ round.name }}</h2>
-      <div class="round-dates">{{ round.dateRange }}</div>
-      <KnockoutMatch
-        v-for="match in round.matches"
-        :key="match.matchNumber"
-        :match="match"
-        :assignments="slotAssignments"
-        @edit-slot="openEditor"
-      />
-    </section>
-  </div>
+  <div>
+    <div class="bracket">
+      <section class="round" v-for="round in bracketData" :key="round.id">
+        <h2 class="round-title">{{ round.name }}</h2>
+        <div class="round-dates">{{ round.dateRange }}</div>
+        <KnockoutMatch
+          v-for="match in round.matches"
+          :key="match.matchNumber"
+          :match="match"
+          :assignments="slotAssignments"
+          @edit-slot="openEditor"
+        />
+      </section>
+    </div>
 
-  <SlotEditor
+    <SlotEditor
     :visible="editorVisible"
     :slot-code="editingSlot"
     :current-value="editingSlot ? (slotAssignments[editingSlot] || '') : ''"
@@ -21,6 +22,7 @@
     @clear="clearSlot"
     @close="closeEditor"
   />
+  </div>
 </template>
 
 <script>
