@@ -19,6 +19,31 @@ export function toISODate(dateString) {
   return `${year}-${month}-${day}`
 }
 
+function getUtcOffsetHours(timezone, date) {
+  try {
+    const parts = new Intl.DateTimeFormat('en', {
+      timeZone: timezone,
+      timeZoneName: 'shortOffset',
+    }).formatToParts(date)
+    const s = parts.find(p => p.type === 'timeZoneName')?.value ?? 'GMT+0'
+    const m = s.match(/GMT([+-])(\d+)(?::(\d+))?/)
+    if (!m) return 0
+    return (m[1] === '+' ? 1 : -1) * (parseInt(m[2], 10) + parseInt(m[3] ?? '0', 10) / 60)
+  } catch {
+    return 0
+  }
+}
+
+// Returns home timezone offset minus venue timezone offset, rounded to nearest 0.5h.
+// Positive = team's home is ahead of the venue (e.g. France +6h vs New York).
+export function tzDiffHours(teamTz, cityTz, isoDate) {
+  if (!teamTz || !cityTz || !isoDate) return 0
+  const date = new Date(`${isoDate}T12:00:00Z`)
+  if (isNaN(date.getTime())) return 0
+  const raw = getUtcOffsetHours(teamTz, date) - getUtcOffsetHours(cityTz, date)
+  return Math.round(raw * 2) / 2
+}
+
 export function isPastDate(isoDate) {
   if (!isoDate) return false
   const [y, m, d] = isoDate.split('-').map(Number)

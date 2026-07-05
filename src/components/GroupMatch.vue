@@ -4,6 +4,7 @@
       <span class="match-date">{{ match.fullDate }}</span>
       <span class="city-label">{{ cityLabel }}</span>
     </div>
+    <div v-if="elevationLabel" class="elevation-label">{{ elevationLabel }}</div>
 
     <div v-if="matchScore" class="match-score">
       <span>{{ matchScore.home ?? '–' }}</span>
@@ -30,8 +31,8 @@
 </template>
 
 <script>
-import { TRAINING_CLIMATE, HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS } from '../data/climate.js'
-import { tempToColor, isPastDate } from '../utils/temperature.js'
+import { TRAINING_CLIMATE, HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS, HOST_CITY_ELEVATION, HOST_CITY_TIMEZONE, TEAM_TIMEZONE } from '../data/climate.js'
+import { tempToColor, isPastDate, tzDiffHours } from '../utils/temperature.js'
 import { shouldFetchLiveTemp, fetchLiveTemp } from '../utils/openMeteo.js'
 import { getWinner, toggleWinner } from '../utils/winnerStorage.js'
 
@@ -61,6 +62,12 @@ export default {
       return this.liveTemp != null
         ? `${base}, ${this.liveTemp.toFixed(1)}°C match-day)`
         : `${base})`
+    },
+
+    elevationLabel() {
+      const e = HOST_CITY_ELEVATION[this.match.city]
+      if (e == null) return null
+      return `${e.toLocaleString('en-US')}m elevation`
     },
 
     matchScore() {
@@ -102,7 +109,7 @@ export default {
 
   methods: {
     handleClick(side) {
-      if (this.matchScore) return  // API score is authoritative; no manual toggle
+      if (this.matchScore) return
       if (side === 'home') {
         this.homeWinner = toggleWinner(this.match.matchId, 'home')
       } else {
@@ -110,9 +117,16 @@ export default {
       }
     },
 
+    tzDiff(name) {
+      const diff = tzDiffHours(TEAM_TIMEZONE[name], HOST_CITY_TIMEZONE[this.match.city], this.match.isoDate)
+      return diff
+    },
+
     teamText(name) {
       const climate = TRAINING_CLIMATE[name]
-      return climate ? `${name} (${climate.tempC}°C)` : name
+      const diff    = this.tzDiff(name)
+      const tzStr   = diff !== 0 ? ` (${diff > 0 ? '+' : ''}${diff}h)` : ''
+      return climate ? `${name} (${climate.tempC}°C)${tzStr}` : `${name}${tzStr}`
     },
 
     teamClass(name, isWinner) {

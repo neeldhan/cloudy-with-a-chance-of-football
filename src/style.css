@@ -242,6 +242,19 @@ h1 {
   border-bottom: none;
 }
 
+/* ── Elevation ── */
+
+.elevation-label {
+  font-size: 0.74rem;
+  opacity: 0.7;
+  margin-bottom: 0.2rem;
+}
+
+.group-match .elevation-label {
+  margin-top: -0.15rem;
+  margin-bottom: 0.25rem;
+}
+
 /* ── Live scores ── */
 
 .match-score {

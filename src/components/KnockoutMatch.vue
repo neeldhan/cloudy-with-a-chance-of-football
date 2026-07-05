@@ -44,13 +44,14 @@
     <div class="meta">
       <div class="meta-line">{{ match.stadium }}</div>
       <div class="meta-line">{{ cityLabel }}</div>
+      <div v-if="elevationLabel" class="meta-line elevation-label">{{ elevationLabel }}</div>
     </div>
   </article>
 </template>
 
 <script>
-import { TRAINING_CLIMATE, HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS } from '../data/climate.js'
-import { tempToColor, isPastDate } from '../utils/temperature.js'
+import { TRAINING_CLIMATE, HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS, HOST_CITY_ELEVATION, HOST_CITY_TIMEZONE, TEAM_TIMEZONE } from '../data/climate.js'
+import { tempToColor, isPastDate, tzDiffHours } from '../utils/temperature.js'
 import { shouldFetchLiveTemp, fetchLiveTemp } from '../utils/openMeteo.js'
 import { describeSlot } from '../utils/slots.js'
 import { getWinner, toggleWinner } from '../utils/winnerStorage.js'
@@ -87,6 +88,12 @@ export default {
       return this.liveTemp != null
         ? `${base}, ${this.liveTemp.toFixed(1)}°C match-day)`
         : `${base})`
+    },
+
+    elevationLabel() {
+      const e = HOST_CITY_ELEVATION[this.match.city]
+      if (e == null) return null
+      return `${e.toLocaleString('en-US')}m elevation`
     },
 
     matchScore() {
@@ -135,7 +142,7 @@ export default {
         this.longPressActive = false
         return
       }
-      if (this.matchScore) return  // API score is authoritative; no manual toggle
+      if (this.matchScore) return
       if (side === 'home') {
         this.homeWinner = toggleWinner(this.match.matchId, 'home')
       } else {
@@ -160,16 +167,23 @@ export default {
       }
     },
 
+    tzDiff(team) {
+      if (!team) return 0
+      return tzDiffHours(TEAM_TIMEZONE[team], HOST_CITY_TIMEZONE[this.match.city], this.match.isoDate)
+    },
+
     getClimate(slot) {
       const team = this.assignments[slot]
       return team ? (TRAINING_CLIMATE[team] ?? null) : null
     },
 
     slotText(slot) {
-      const team    = this.assignments[slot]
+      const team  = this.assignments[slot]
       if (!team) return slot
       const climate = TRAINING_CLIMATE[team]
-      return climate ? `${team} (${climate.tempC}°C)` : team
+      const diff    = this.tzDiff(team)
+      const tzStr   = diff !== 0 ? ` (${diff > 0 ? '+' : ''}${diff}h)` : ''
+      return climate ? `${team} (${climate.tempC}°C)${tzStr}` : `${team}${tzStr}`
     },
 
     slotClass(slot, isWinner) {
