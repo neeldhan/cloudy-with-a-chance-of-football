@@ -16,6 +16,9 @@ const NAME_MAP = {
   "Czech Republic":               'Czechia',
   "Curaçao":                      'Curacao',
   "Cabo Verde":                   'Cape Verde',
+  "Cape Verde Islands":           'Cape Verde',
+  "Bosnia-Herzegovina":           'Bosnia and Herzegovina',
+  "Bosnia and Herzegovina":       'Bosnia and Herzegovina',
 }
 
 function norm(name) {
@@ -69,6 +72,7 @@ export default {
         home:   m.score.fullTime.home,
         away:   m.score.fullTime.away,
         status: m.status,
+        winner: m.score.winner ?? null, // 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null
       }
     }
 

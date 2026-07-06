@@ -8,7 +8,7 @@
           v-for="match in round.matches"
           :key="match.matchNumber"
           :match="match"
-          :assignments="slotAssignments"
+          :assignments="mergedAssignments"
           :scores="scores"
           @edit-slot="openEditor"
         />
@@ -18,7 +18,7 @@
     <SlotEditor
     :visible="editorVisible"
     :slot-code="editingSlot"
-    :current-value="editingSlot ? (slotAssignments[editingSlot] || '') : ''"
+    :current-value="editingSlot ? (mergedAssignments[editingSlot] || '') : ''"
     @save="saveSlot"
     @clear="clearSlot"
     @close="closeEditor"
@@ -27,9 +27,10 @@
 </template>
 
 <script>
-import { bracketData } from '../data/bracket.js'
-import KnockoutMatch  from './KnockoutMatch.vue'
-import SlotEditor     from './SlotEditor.vue'
+import { bracketData }       from '../data/bracket.js'
+import { deriveAssignments } from '../utils/bracketProgression.js'
+import KnockoutMatch          from './KnockoutMatch.vue'
+import SlotEditor             from './SlotEditor.vue'
 
 export default {
   components: { KnockoutMatch, SlotEditor },
@@ -45,6 +46,14 @@ export default {
       editorVisible:   false,
       editingSlot:     null,
     }
+  },
+
+  computed: {
+    mergedAssignments() {
+      // Auto-derived assignments (from real results) take precedence;
+      // manual assignments fill gaps (e.g. 3rd-place slots we can't compute).
+      return { ...this.slotAssignments, ...deriveAssignments(this.scores) }
+    },
   },
 
   mounted() {
