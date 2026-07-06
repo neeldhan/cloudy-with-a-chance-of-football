@@ -114,8 +114,10 @@ export default {
       if (this.matchScore) return
       if (side === 'home') {
         this.homeWinner = toggleWinner(this.match.matchId, 'home')
+        if (this.homeWinner) this.awayWinner = false
       } else {
         this.awayWinner = toggleWinner(this.match.matchId, 'away')
+        if (this.awayWinner) this.homeWinner = false
       }
     },
 
