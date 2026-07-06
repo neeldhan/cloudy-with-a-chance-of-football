@@ -23,8 +23,10 @@
           @touchstart.passive="onTouchStart(match.home)"
           @touchend="onTouchEnd"
           @touchmove.passive="onTouchEnd"
-        >{{ slotText(match.home) }}</span>
-        <span class="team-note">{{ slotNote(match.home) }}</span>
+        >
+          <span class="slot-main">{{ slotText(match.home) }}</span>
+          <span v-if="slotNote(match.home)" class="slot-note">{{ slotNote(match.home) }}</span>
+        </span>
       </div>
       <div class="team">
         <span
@@ -36,8 +38,10 @@
           @touchstart.passive="onTouchStart(match.away)"
           @touchend="onTouchEnd"
           @touchmove.passive="onTouchEnd"
-        >{{ slotText(match.away) }}</span>
-        <span class="team-note">{{ slotNote(match.away) }}</span>
+        >
+          <span class="slot-main">{{ slotText(match.away) }}</span>
+          <span v-if="slotNote(match.away)" class="slot-note">{{ slotNote(match.away) }}</span>
+        </span>
       </div>
     </div>
 
