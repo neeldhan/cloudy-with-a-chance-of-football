@@ -3,8 +3,8 @@
     <div class="match-header">
       <span class="match-date">{{ match.fullDate }}</span>
       <span class="city-label">{{ cityLabel }}</span>
+      <span v-if="elevationLabel" class="elevation-label">{{ elevationLabel }}</span>
     </div>
-    <div v-if="elevationLabel" class="elevation-label">{{ elevationLabel }}</div>
 
     <div v-if="matchScore" class="match-score">
       <span>{{ matchScore.home ?? '–' }}</span>
@@ -14,18 +14,20 @@
     </div>
 
     <div class="teams">
-      <div
-        class="team-name"
-        :class="teamClass(match.home, showHomeWinner)"
-        :style="teamStyle(match.home)"
-        @click="handleClick('home')"
-      >{{ teamText(match.home) }}</div>
-      <div
-        class="team-name"
-        :class="teamClass(match.away, showAwayWinner)"
-        :style="teamStyle(match.away)"
-        @click="handleClick('away')"
-      >{{ teamText(match.away) }}</div>
+      <div class="team-row" @click="handleClick('home')">
+        <span
+          class="team-name"
+          :class="teamClass(match.home, showHomeWinner)"
+          :style="teamStyle(match.home)"
+        >{{ teamText(match.home) }}</span>
+      </div>
+      <div class="team-row" @click="handleClick('away')">
+        <span
+          class="team-name"
+          :class="teamClass(match.away, showAwayWinner)"
+          :style="teamStyle(match.away)"
+        >{{ teamText(match.away) }}</span>
+      </div>
     </div>
   </article>
 </template>
@@ -118,8 +120,7 @@ export default {
     },
 
     tzDiff(name) {
-      const diff = tzDiffHours(TEAM_TIMEZONE[name], HOST_CITY_TIMEZONE[this.match.city], this.match.isoDate)
-      return diff
+      return tzDiffHours(TEAM_TIMEZONE[name], HOST_CITY_TIMEZONE[this.match.city], this.match.isoDate)
     },
 
     teamText(name) {
