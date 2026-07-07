@@ -112,6 +112,23 @@ export function computeInsights(scores) {
   const tzQualified  = teams.filter(t => t.qualified).map(t => t.avgTzDiff)
   const tzEliminated = teams.filter(t => !t.qualified).map(t => t.avgTzDiff)
 
+  const maxBy = (arr, key) => arr.reduce((best, t) => (!best || t[key] > best[key]) ? t : best, null)
+
+  // Powers both the timezone hero stat and the three callout cards, so the
+  // "Japan qualified despite 14h of travel" style story stays in sync with
+  // whichever teams actually have the biggest/smallest gaps as results come in.
+  const qualifiedTeams  = teams.filter(t => t.qualified)
+  const eliminatedTeams = teams.filter(t => !t.qualified)
+  const tzSpotlight = {
+    // Qualified team with the largest average timezone gap — travelled furthest and still advanced.
+    resilient: maxBy(qualifiedTeams, 'avgTzDiff'),
+    // Smallest average timezone gap of any team, ties broken by points — effectively played at home.
+    homeComfort: [...teams].sort((a, b) => a.avgTzDiff - b.avgTzDiff || b.P - a.P)[0] ?? null,
+    // Largest gap among eliminated teams; falls back to the overall max early in the tournament
+    // when no team has been eliminated yet.
+    furthest: maxBy(eliminatedTeams, 'avgTzDiff') ?? maxBy(teams, 'avgTzDiff'),
+  }
+
   return {
     // sorted for the climate chart
     teamsByDelta: [...teams].sort((a, b) => a.avgDelta - b.avgDelta),
@@ -119,6 +136,7 @@ export function computeInsights(scores) {
     teamsByTz: [...teams].sort((a, b) => b.avgTzDiff - a.avgTzDiff),
     elevTiers,
     comfortThreshold: COMFORT_THRESHOLD,
+    tzSpotlight,
     headlines: {
       comfortWinPct:     comfortTotal    > 0 ? (comfortWins    / comfortTotal)    * 100 : 0,
       discomfortWinPct:  discomfortTotal > 0 ? (discomfortWins / discomfortTotal) * 100 : 0,

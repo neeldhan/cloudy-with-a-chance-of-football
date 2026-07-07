@@ -23,9 +23,15 @@
           <div class="hero-compare">vs. {{ insights.headlines.seaLevelGoals.toFixed(1) }} at sea-level venues</div>
         </div>
         <div class="hero-card">
-          <div class="hero-num">14.3 <span class="hero-unit">h</span></div>
-          <div class="hero-label">Japan's avg timezone gap per match — and they qualified</div>
-          <div class="hero-compare">New Zealand: 19h avg · 1 point</div>
+          <div class="hero-num">{{ insights.tzSpotlight.resilient ? insights.tzSpotlight.resilient.avgTzDiff.toFixed(1) : '—' }} <span class="hero-unit">h</span></div>
+          <div class="hero-label">
+            <template v-if="insights.tzSpotlight.resilient">{{ insights.tzSpotlight.resilient.name }}'s avg timezone gap per match — and they qualified</template>
+            <template v-else>Timezone gap for a qualified team</template>
+          </div>
+          <div class="hero-compare">
+            <template v-if="insights.tzSpotlight.furthest">{{ insights.tzSpotlight.furthest.name }}: {{ insights.tzSpotlight.furthest.avgTzDiff.toFixed(1) }}h avg · {{ ptsLabel(insights.tzSpotlight.furthest.P) }}</template>
+            <template v-else>—</template>
+          </div>
         </div>
       </div>
 
@@ -110,18 +116,36 @@
         <div class="tz-callouts">
           <div class="tz-call tz-green">
             <div class="tz-call-label">Most resilient traveller</div>
-            <div class="tz-call-team">Japan</div>
-            <div class="tz-call-stat">14.3h avg gap · 5 pts · Qualified</div>
+            <template v-if="insights.tzSpotlight.resilient">
+              <div class="tz-call-team">{{ insights.tzSpotlight.resilient.name }}</div>
+              <div class="tz-call-stat">{{ insights.tzSpotlight.resilient.avgTzDiff.toFixed(1) }}h avg gap · {{ ptsLabel(insights.tzSpotlight.resilient.P) }} · Qualified</div>
+            </template>
+            <template v-else>
+              <div class="tz-call-team">—</div>
+              <div class="tz-call-stat">Not enough data yet</div>
+            </template>
           </div>
           <div class="tz-call tz-gold">
-            <div class="tz-call-label">Perfect home comfort</div>
-            <div class="tz-call-team">Mexico</div>
-            <div class="tz-call-stat">0.0h gap · 9 pts · Group winners</div>
+            <div class="tz-call-label">Closest to home</div>
+            <template v-if="insights.tzSpotlight.homeComfort">
+              <div class="tz-call-team">{{ insights.tzSpotlight.homeComfort.name }}</div>
+              <div class="tz-call-stat">{{ insights.tzSpotlight.homeComfort.avgTzDiff.toFixed(1) }}h gap · {{ ptsLabel(insights.tzSpotlight.homeComfort.P) }} · {{ insights.tzSpotlight.homeComfort.qualified ? 'Qualified' : 'Eliminated' }}</div>
+            </template>
+            <template v-else>
+              <div class="tz-call-team">—</div>
+              <div class="tz-call-stat">Not enough data yet</div>
+            </template>
           </div>
           <div class="tz-call tz-red">
             <div class="tz-call-label">Furthest from home</div>
-            <div class="tz-call-team">New Zealand</div>
-            <div class="tz-call-stat">19.0h avg gap · 1 pt · Eliminated</div>
+            <template v-if="insights.tzSpotlight.furthest">
+              <div class="tz-call-team">{{ insights.tzSpotlight.furthest.name }}</div>
+              <div class="tz-call-stat">{{ insights.tzSpotlight.furthest.avgTzDiff.toFixed(1) }}h avg gap · {{ ptsLabel(insights.tzSpotlight.furthest.P) }} · {{ insights.tzSpotlight.furthest.qualified ? 'Qualified' : 'Eliminated' }}</div>
+            </template>
+            <template v-else>
+              <div class="tz-call-team">—</div>
+              <div class="tz-call-stat">Not enough data yet</div>
+            </template>
           </div>
         </div>
 
@@ -387,6 +411,10 @@ export default {
       // render these arrows (esp. ↕) as full-colour emoji.
       if (state.key !== key) return '↕︎'
       return state.asc ? '↑︎' : '↓︎'
+    },
+
+    ptsLabel(p) {
+      return `${p} ${p === 1 ? 'pt' : 'pts'}`
     },
 
     deltaColor(delta) {
