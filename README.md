@@ -77,9 +77,10 @@ There's also an **Insights** tab that turns the raw results into analysis: it cr
 * **Computed headline stats** — the app tallies every finished group stage match to answer the questions the whole project is built around: what's the win rate for teams playing within 8°C of their home climate versus beyond it, how do goals-per-game change with venue altitude, and how much bigger is the average timezone gap for eliminated teams than for qualifiers
 * **Climate comfort chart** — a sorted bar for every team showing the average temperature gap between their training base and the venues they played in, coloured blue (close to home) to red (far out of comfort), with qualified teams highlighted
 * **"Core Findings" cards** — four always-visible findings (climate comfort, altitude, timezone fatigue, climate extremes) computed live from the same data — not AI-generated, and never stale; see [Computed Insights](#computed-insights-non-ai) for exactly how each one is derived
-* **AI-generated insights** — a "Generate insights" button that sends the computed statistics to a large language model (Llama 3.3 via Groq) and gets back four short, specific written observations about patterns in the data, each tagged (Resilient, Cautionary, Outlier, Pattern, Record, Surprising)
-* **Pin the good ones** — any generated insight can be pinned to keep it around; pins are saved to `localStorage`. Before your first generation, four placeholder cards computed from the same live data (not hardcoded) fill that space so the section is never empty
-* **Grounded, cached, and honest** — the model is instructed to only cite numbers that appear verbatim in the data, results are cached so repeat views are instant, and the UI carries a visible "AI can make mistakes — always double-check findings" note
+* **AI-generated insights** — a "Generate insights" button that sends the computed statistics to a large language model (Llama 3.3 via Groq, though the model isn't named in the UI) and gets back four short, specific written observations about patterns in the data, each tagged (Resilient, Cautionary, Outlier, Pattern, Record, Surprising). At least half of every batch is required to be a genuine cross-team pattern (a shared region, climate band, altitude, or timezone bucket), not a single team's story
+* **Generate more, up to a limit** — each click appends 4 more insights rather than replacing what's there, for up to 3 rounds (12 total) per set of results. The button then disables with a note explaining why, until new match results make more rounds available
+* **Pin the good ones** — any generated insight can be pinned to keep it around; pinning moves the card into "Pinned" (not a copy), and unpinning moves it back. Pins are saved to `localStorage`
+* **Grounded, cached, and honest** — the model is told to only cite numbers that appear verbatim in the data and to never restate a fact already shown in the Core Findings cards. Each round is cached so repeat views are instant, and the UI carries a visible disclaimer: AI can make mistakes, correlation isn't causation, and it can be a little too eager connecting dots — give it a human read
 
 ### Mobile
 
@@ -243,33 +244,40 @@ Everything on the Insights tab *except* the "Generate insights" button's output 
 3. **Timezone Fatigue** — `headlines.tzQualifiedAvg` vs. `tzEliminatedAvg`, and the gap between them.
 4. **Climate Extremes** — deliberately *not* a fixed °C threshold. It takes the worst 25% of teams by climate gap (at least one team, so this card can never disappear even early in the tournament) and reports their point range. The closing sentence is adaptive: it says the pattern is "a striking tipping point" only if every team in that worst-quartile cohort scored ≤1 point, and otherwise honestly says results have been "more mixed than a clean tipping point would suggest." A fixed threshold risks going quiet (no team crosses it yet) or eventually asserting a clean pattern that stops being true — the floating cohort avoids both failure modes at the cost of a less catchy, non-fixed headline number.
 
-**Seed insights** (`seedInsights()`) are the four placeholder cards shown in the "Current" section before you've ever clicked "Generate insights" — tagged Resilient / Cautionary / Outlier / Surprising. These are also computed, not hardcoded copy and not AI-written:
-- **Resilient** reuses `tzSpotlight.resilient` directly, so it always matches the hero card and timezone callouts
-- **Cautionary** is the eliminated team (or the overall worst, early on) with the largest climate gap
-- **Outlier** and **Surprising** are the top two *qualified* teams by climate gap — teams that "beat the trend" and advanced despite a large mismatch
-
-Seeding happens exactly once per page load: a `watch` on the `insights` computed property fires only while `currentInsights` is still empty, so the 60-second score-polling can never clobber a real AI generation you're currently looking at. Once you click "Generate insights", `currentInsights` is replaced entirely by the AI's output for the rest of that session — seeds never return unless you reload the page before generating.
+Before your first "Generate insights" click, the "Current" section is a plain empty state ("No insights here yet — generate some above"), not placeholder content. An earlier version showed four computed-but-not-AI cards there by default; that was removed because they were visually indistinguishable from real AI output in a section literally labelled "AI Insights" — more confusing than a simple prompt to click the button.
 
 ### AI Insights Flow
 
-When you click "Generate insights", the frontend computes the statistics locally (`computeInsights`) and POSTs them to the Worker's `/analysis` endpoint. The Worker then does the slow, key-sensitive work that can't happen in the browser:
+When you click "Generate insights", the frontend computes the statistics locally (`computeInsights`) and POSTs them to the Worker's `/analysis` endpoint, along with a `round` number. The Worker then does the slow, key-sensitive work that can't happen in the browser:
 
 ```
-Browser → POST /analysis  (computed stats: teams, elevation tiers, headlines)
-        → Worker hashes the tournament data → KV cache key
-        → cache HIT?  return the stored insights instantly (~0.4s)
-        → cache MISS? build a prompt → call Groq (Llama 3.3 70B)
-                     → parse the JSON array of 4 insights
-                     → store in KV (keyed by data hash, 1-day TTL)
-                     → return the insights (~2–3s)
+Browser → POST /analysis  (computed stats: teams, elevation tiers, headlines, round)
+        → Worker hashes the tournament data → KV cache key: promptVersion:hash:round
+        → round > MAX_ROUNDS (3)?  reject with a round_limit error
+        → cache HIT?  return the stored insights instantly (~0.1–0.5s)
+        → cache MISS? DRAFT:    build a prompt → call the AI provider (currently
+                                 Groq, Llama 3.3 70B) → parse 4 candidate insights
+                     → CRITIQUE: build a second prompt (the draft insights +
+                                 the full team data) → call the AI provider
+                                 again → it fixes, replaces, or passes through
+                                 each draft unchanged
+                     → store the critiqued result in KV (1-day TTL)
+                     → return the insights (~2–6s total for both calls)
 ```
 
-Two design choices matter here:
+Design choices worth calling out:
 
-- **The cache key is a hash of the tournament data only** (teams, elevation tiers, headline figures) — *not* the per-session state. So the first click for a given set of results pays the ~2–3s generation cost, and every click after that is an instant cache hit until new match results change the data.
-- **The model is asked for structured JSON** (`response_format: json_object`) and told to cite only numbers present in the supplied data, which keeps the four returned insights parseable and grounded.
+- **Every generation is draft-then-critique, not a single call.** A single generation pass reliably produces two failure modes: calling two teams with opposite outcomes a "Pattern" (two examples is a coincidence, not a trend), and framing a team succeeding *because of* a small, favourable climate/timezone gap as "surprising" or "despite" — technically well-formed JSON, but logically backwards. The critique pass re-reviews every draft insight against the *full* team list (not just the teams the draft happened to cite) before anything is cached or shown. Both prompts are built by `buildPrompt()`/`buildCritiquePrompt()` in `workers/scores.js`, sharing a `buildContext()` helper so the two never disagree about what data or already-shown facts the model has to work with. If the critique call itself fails, the Worker falls back to the uncritiqued draft rather than discarding a perfectly good generation over a hiccup in the second call.
+- **Each click is a new "round", not a re-roll of the same cache slot.** The cache key includes an explicit round number (1, 2, 3, ...) that the frontend increments on every successful generation, so clicking "Generate" again returns a *different* batch instead of the same cached array forever — while still being an instant cache hit for every other visitor who reaches that same round for the same data. The frontend appends each round's 4 insights to what's already showing (up to `MAX_AI_ROUNDS = 3`, i.e. 12 total), then disables the button with an explanatory note. `MAX_ROUNDS` in the Worker and `MAX_AI_ROUNDS` in `InsightsView.vue` must be kept in sync manually — they're on opposite sides of a network boundary so can't share a constant.
+- **A `PROMPT_VERSION` tag is folded into the cache key.** Without it, editing either prompt (wording, instructions, schema) would be silently masked by old cached insights until the underlying scores data happened to change — every visitor would keep getting the pre-edit output. Bump it whenever `buildPrompt()` or `buildCritiquePrompt()` changes meaningfully.
+- **Both prompts explicitly rule out restating the Core Findings** — not just the three-way comparisons as a whole, but each individual figure within them, since a model will happily cite just one side of a comparison (e.g. the sea-level goals/game number alone) and not recognise it as the same already-shown fact.
+- **At least 2 of the 4 insights per round must span multiple teams** — a shared region, climate band, altitude, or timezone bucket — with at most 1 single-team "spotlight" story, and any insight claiming a "Pattern" needs at least 3 *consistent* supporting teams, not 2 (two examples that disagree with each other is evidence against a pattern, not for one). This pushes the model toward the kind of cross-cutting pattern a person skimming a spreadsheet would likely miss, rather than four separate "here's one country's story" cards. The schema also explicitly forbids placeholder team labels like "None" or "Various" for these grouped insights, requiring a short descriptive label instead (e.g. "South American Teams").
+- **Provider config is isolated to two constants** (`AI_API_URL`, `AI_MODEL` in `workers/scores.js`) and a provider-agnostic function name (`callAIForInsights`), so a future provider swap is a small, contained change rather than a search-and-replace across the file.
+- **The model is asked for structured JSON** (`response_format: json_object`) so the four returned insights are reliably parseable.
 
-The Worker caps the Groq call with a timeout and returns a retryable error on failure; the frontend silently retries a couple of times before surfacing an error, so a cold generation almost always succeeds without the user noticing.
+The Worker caps each AI call with a timeout and returns a retryable error on failure; the frontend silently retries a couple of times before surfacing an error, so a cold generation almost always succeeds without the user noticing.
+
+If the underlying tournament data actually changes (new match results, detected by comparing a snapshot of the stats against the last-seen one — not just any 60-second re-poll with identical content), the frontend clears `currentInsights` and resets the round counter to 0, since old AI insights may now cite stale numbers and a fresh round of generation becomes available.
 
 ### Match ID Scheme
 
@@ -330,7 +338,7 @@ The match card also shows the host city's average July temperature, and for rece
 
 Switch to the **Insights** tab. At the top are headline figures computed from every finished group stage match — the climate-comfort win rate, goals-per-game by altitude, and the timezone-travel gap between qualifiers and eliminated teams — followed by a per-team climate comfort chart you can sort by team, temperature gap, or points.
 
-Below that, press **Generate insights** to have an AI model read the computed statistics and write four short observations about patterns in the data. The first generation for a given set of results takes a couple of seconds; after that it's cached and instant. Pin any insight you want to keep — pinned insights persist in your browser. As always with AI, the findings are a starting point: verify anything surprising against the numbers shown above.
+Below that, press **Generate insights** to have an AI model read the computed statistics and write four short observations about patterns in the data — most of which should span multiple teams (a region, climate band, or timezone bucket) rather than narrate a single team's story. Each click gets a couple of seconds (cached and instant on repeat) and appends 4 more, up to 3 rounds (12 total) for the current results; after that the button explains it's out until new matches finish. Pin any insight you want to keep — pinning moves it into "Pinned" rather than copying it, and unpinning moves it back. As always with AI, treat the findings as a starting point: verify anything surprising against the numbers shown above.
 
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
 
@@ -381,8 +389,8 @@ wrangler secret put GROQ_API_KEY
 * **Knockout bracket is manual** — bracket slots must be filled in by hand once group stage results are known. There is no automatic propagation of group standings into the knockout draw
 * **football-data.org free tier** — the free tier has rate limits. The 60-second edge cache in the Worker ensures these are not hit under normal traffic, but very high traffic spikes could theoretically exhaust the per-minute limit
 * **No server-side rendering** — this is a fully client-side static app; initial page load fetches everything from flat data files and the Worker
-* **AI insights can be wrong** — the generated observations come from a language model. It's instructed to cite only numbers present in the data, and the app shows a "double-check findings" note, but it can still misread or overstate a pattern. Treat the AI section as a starting point, not authority. The insights are also only as current as the cached result for a given set of match data (cached for up to a day, or until the results change)
-* **Groq free-tier limits** — the AI feature runs on Groq's free tier, which has per-minute rate limits. The KV cache means a given set of results is only generated once, so normal use stays well within limits, but a burst of never-before-seen requests could hit them
+* **AI insights can be wrong** — the generated observations come from a language model. It's instructed to cite only numbers present in the data and to favour cross-team patterns over single-team narration, but it can still misread a trend, overstate a correlation, or connect dots too eagerly — the UI carries a disclaimer to that effect. Treat the AI section as a starting point, not authority. Each round is also only as current as its cached result for that set of match data (cached for up to a day, or until the results actually change)
+* **Groq free-tier limits** — the AI feature runs on Groq's free tier, which has per-minute rate limits. Each generation is two sequential calls (draft + critique — see [AI Insights Flow](#ai-insights-flow)), so it uses roughly double the tokens a single-pass design would. The KV cache means any given round (1, 2, or 3) for a given set of results is only ever generated once — subsequent requests for that same round are instant cache hits — so normal use stays well within limits, but generating several never-before-seen rounds back-to-back can hit the per-minute cap and return a retryable error
 
 ### Why Groq (and not OpenRouter or Gemini)?
 
