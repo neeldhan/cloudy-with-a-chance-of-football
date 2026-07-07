@@ -16,6 +16,7 @@ body {
 h1 {
   text-align: center;
   margin: 1rem 0 0.25rem;
+  padding: 0 1rem;
   font-size: 1.6rem;
   letter-spacing: 0.03em;
 }
@@ -25,14 +26,17 @@ h1 {
   font-size: 0.9rem;
   opacity: 0.85;
   margin-bottom: 0.4rem;
+  padding: 0 1rem;
 }
 
 /* ── Tabs ── */
 
 .main-nav {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 0.5rem;
+  padding: 0 1rem;
   margin-bottom: 0.75rem;
 }
 

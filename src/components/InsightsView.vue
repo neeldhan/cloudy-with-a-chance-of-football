@@ -383,8 +383,10 @@ export default {
     },
 
     sortIcon(state, key) {
-      if (state.key !== key) return '↕'
-      return state.asc ? '↑' : '↓'
+      // ︎ = variation selector-15: forces the text glyph so iOS doesn't
+      // render these arrows (esp. ↕) as full-colour emoji.
+      if (state.key !== key) return '↕︎'
+      return state.asc ? '↑︎' : '↓︎'
     },
 
     deltaColor(delta) {
@@ -976,17 +978,22 @@ export default {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
   background: rgba(161,66,244,0.15);
   border: 1px solid rgba(161,66,244,0.35);
   border-radius: 999px;
   padding: 0.4rem 0.9rem;
+  /* Fixed width so "Generating…" and "Generate insights" render at the same
+     size — otherwise the label swap resizes the button and reflows the heading. */
+  min-width: 11rem;
   font-size: 0.78rem;
   font-weight: 600;
   color: #d8b4fe;
   transition: background 0.15s, opacity 0.15s;
   white-space: nowrap;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .generate-btn:hover:not(:disabled) { background: rgba(161,66,244,0.25); }
@@ -1073,8 +1080,23 @@ export default {
 
   .cc-colheads,
   .cc-row         { grid-template-columns: 120px 1fr 24px; }
+  /* header row must match the data rows so columns line up */
+  .tz-colheads,
   .tz-row         { grid-template-columns: 120px 1fr 32px 26px; }
   .cc-name,
   .tz-name        { font-size: 0.72rem; }
+
+  /* Stack the "Generate insights" button under the heading so the heading
+     isn't squeezed into a narrow column beside it. */
+  .ai-section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+  .generate-btn { width: 100%; }
+
+  /* Comfortable tap targets for the column-sort controls (matches the 44px
+     minimum used elsewhere in the app). */
+  .col-sort-btn { min-height: 44px; }
 }
 </style>
