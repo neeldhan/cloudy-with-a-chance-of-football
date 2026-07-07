@@ -1,4 +1,4 @@
-<p align="center"><strong><a href="https://neeldhan.github.io/cloudy-with-a-chance-of-football/">▶&nbsp;&nbsp;Open the live app</a></strong></p>
+<p align="center"><strong><a href="https://wc26.neeldhanesha.com/">▶&nbsp;&nbsp;Open the live app</a></strong></p>
 
 <h1 align="center">World Cup 2026 Heat Bracket</h1>
 
@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://neeldhan.github.io/cloudy-with-a-chance-of-football/">
+  <a href="https://wc26.neeldhanesha.com/">
     <img src="https://img.shields.io/badge/Live%20Demo-Online-22c55e?style=for-the-badge" alt="Live Demo">
   </a>&nbsp;
   <img src="https://img.shields.io/badge/Vue-3-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white" alt="Vue 3">&nbsp;
@@ -316,16 +316,16 @@ push to main → checkout → npm ci → npm run build → deploy to GitHub Page
 
 See [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) for the full workflow configuration.
 
-### Moving to a Custom Domain
+### Custom Domain
 
-The site is currently hosted at `neeldhan.github.io/cloudy-with-a-chance-of-football/` for testing. To move it to `wc26.neeldhanesha.com`:
+The site is served at **`wc26.neeldhanesha.com`**, a custom domain on GitHub Pages. Two things wire this up:
 
-1. Add a DNS CNAME record: `wc26` → `neeldhan.github.io`
-2. Update `public/CNAME` to `wc26.neeldhanesha.com` (it currently still contains the older `bracket.neeldhanesha.com`)
-3. Remove the `base` option from `vite.config.js` (currently set to the GitHub Pages subdirectory path)
-4. Push to `main` — GitHub Actions handles the rest
+- **`public/CNAME`** contains `wc26.neeldhanesha.com` — GitHub Pages reads this to bind the domain
+- **`base: '/'` in `vite.config.js`** — a custom domain serves the repo at the domain root (not in a `/cloudy-with-a-chance-of-football/` subdirectory), so assets are referenced from `/`
 
-GitHub Pages will recognise the custom domain as soon as DNS propagates and the updated `CNAME` file is deployed.
+The DNS side is a single `CNAME` record at neeldhanesha.com's provider (Cloudflare): `wc26` → `neeldhan.github.io`, left **unproxied (DNS only / grey cloud)** so GitHub can issue and serve its HTTPS certificate. The old `neeldhan.github.io/cloudy-with-a-chance-of-football/` URL automatically redirects to the custom domain.
+
+To revert to the plain GitHub Pages URL, delete `public/CNAME` and set `base` back to `'/cloudy-with-a-chance-of-football/'`.
 
 ### Rotating the API Keys
 
