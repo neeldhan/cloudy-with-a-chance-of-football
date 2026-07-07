@@ -16,20 +16,27 @@
       :class="{ active: activeTab === 'schedule' }"
       @click="activeTab = 'schedule'"
     >Group Stage Schedule</button>
+    <button
+      class="tab-button"
+      :class="{ active: activeTab === 'insights' }"
+      @click="activeTab = 'insights'"
+    >Insights</button>
   </nav>
 
-  <BracketView  v-show="activeTab === 'bracket'"  :scores="scores" />
-  <ScheduleView v-show="activeTab === 'schedule'" :scores="scores" />
+  <BracketView   v-show="activeTab === 'bracket'"  :scores="scores" />
+  <ScheduleView  v-show="activeTab === 'schedule'" :scores="scores" />
+  <InsightsView  v-show="activeTab === 'insights'" :scores="scores" />
 </template>
 
 <script>
-import BracketView  from './components/BracketView.vue'
-import ScheduleView from './components/ScheduleView.vue'
+import BracketView   from './components/BracketView.vue'
+import ScheduleView  from './components/ScheduleView.vue'
+import InsightsView  from './components/InsightsView.vue'
 
 const SCORES_URL = import.meta.env.VITE_SCORES_URL
 
 export default {
-  components: { BracketView, ScheduleView },
+  components: { BracketView, ScheduleView, InsightsView },
 
   data() {
     return {

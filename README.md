@@ -1,3 +1,5 @@
+<p align="center"><strong><a href="https://neeldhan.github.io/cloudy-with-a-chance-of-football/">▶&nbsp;&nbsp;Open the live app</a></strong></p>
+
 <h1 align="center">World Cup 2026 Heat Bracket</h1>
 
 <p align="center">
@@ -5,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://vikasbhatia.github.io/cloudy-with-a-chance-of-football/">
+  <a href="https://neeldhan.github.io/cloudy-with-a-chance-of-football/">
     <img src="https://img.shields.io/badge/Live%20Demo-Online-22c55e?style=for-the-badge" alt="Live Demo">
   </a>&nbsp;
   <img src="https://img.shields.io/badge/Vue-3-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white" alt="Vue 3">&nbsp;
@@ -43,6 +45,8 @@ This app is a tool for exploring that theory. It shows the full tournament — e
 
 On top of the climate angle, it's also a fully functional bracket predictor. You can fill in your knockout picks slot by slot, mark winners as you go, and watch live scores populate automatically as matches are played. Everything saves locally in your browser, so your predictions persist across sessions.
 
+There's also an **Insights** tab that turns the raw results into analysis: it crunches every finished group stage match to measure whether climate familiarity, altitude, and timezone travel actually correlated with results — and can generate fresh written observations about the data on demand using an AI model.
+
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
 
 ---
@@ -68,6 +72,14 @@ On top of the climate angle, it's also a fully functional bracket predictor. You
 * **Manual winner toggle** — click or tap any team to highlight them as the winner of that match, for matches without an official API score
 * **Persistent state** — all slot assignments and manual winner highlights are saved to `localStorage` and survive page refreshes and browser sessions
 
+### Insights & Data Analysis
+
+* **Computed headline stats** — the app tallies every finished group stage match to answer the questions the whole project is built around: what's the win rate for teams playing within 8°C of their home climate versus beyond it, how do goals-per-game change with venue altitude, and how much bigger is the average timezone gap for eliminated teams than for qualifiers
+* **Climate comfort chart** — a sorted bar for every team showing the average temperature gap between their training base and the venues they played in, coloured blue (close to home) to red (far out of comfort), with qualified teams highlighted
+* **AI-generated insights** — a "Generate insights" button that sends the computed statistics to a large language model (Llama 3.3 via Groq) and gets back four short, specific written observations about patterns in the data, each tagged (Resilient, Cautionary, Outlier, Pattern, Record, Surprising)
+* **Pin the good ones** — any generated insight can be pinned to keep it around; pins are saved to `localStorage`. A set of hand-written "seed" insights is shown by default so the section is never empty
+* **Grounded, cached, and honest** — the model is instructed to only cite numbers that appear verbatim in the data, results are cached so repeat views are instant, and the UI carries a visible "AI can make mistakes — always double-check findings" note
+
 ### Mobile
 
 * Full mobile responsiveness — the bracket scrolls horizontally with snap points, the group grid collapses to a single column, and tap targets meet minimum accessibility size guidelines
@@ -87,25 +99,37 @@ This app has two parts: the frontend (the website itself, built with Vue and hos
 * [Node.js](https://nodejs.org/) v22 or higher
 * npm (bundled with Node.js)
 * A free [football-data.org](https://www.football-data.org/) API key
+* A free [Groq](https://console.groq.com/keys) API key (for the AI insights feature)
 * A free [Cloudflare](https://cloudflare.com/) account (for the Worker backend)
 * [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) — Cloudflare's command-line deployment tool (`npm install -g wrangler`)
 
 ### Step 1 — Clone and install
 
 ```bash
-git clone https://github.com/vikasbhatia/cloudy-with-a-chance-of-football.git
+git clone https://github.com/neeldhan/cloudy-with-a-chance-of-football.git
 cd cloudy-with-a-chance-of-football
 npm install
 ```
 
 ### Step 2 — Deploy the Cloudflare Worker
 
-The app uses a Cloudflare Worker as a secure middleman between the browser and the football scores API. This keeps your API key hidden from users — it lives encrypted inside Cloudflare, never in any code file. Deploy it once and it runs indefinitely for free.
+The app uses a Cloudflare Worker as a secure middleman between the browser and two external APIs (football scores and the AI model). This keeps your API keys hidden from users — they live encrypted inside Cloudflare, never in any code file. Deploy it once and it runs indefinitely for free.
+
+First, create the KV namespace that caches AI insights, and paste the printed `id` into the `[[kv_namespaces]]` block in `wrangler.toml`:
 
 ```bash
 wrangler login
+wrangler kv namespace create INSIGHTS
+# copy the printed id into wrangler.toml under [[kv_namespaces]]
+```
+
+Then store the two API keys as encrypted secrets and deploy:
+
+```bash
 wrangler secret put FOOTBALL_DATA_API_KEY
 # paste your football-data.org API key when prompted
+wrangler secret put GROQ_API_KEY
+# paste your Groq API key when prompted
 wrangler deploy
 ```
 
@@ -135,7 +159,7 @@ The app is now running at `http://localhost:5173`. Live scores will work immedia
 
 The app is a fully static Vue 3 single-page application — there is no traditional server. All match data, team climate information, and bracket structure is bundled at build time from local data files. The only runtime network calls are to Open-Meteo (weather) and to the Cloudflare Worker (scores), both made directly from the browser.
 
-The Cloudflare Worker is the one piece of server-side code in the project. It exists solely to act as a secure proxy: the football-data.org API requires an authentication key, which cannot be safely included in browser-side JavaScript. The Worker holds the key as an encrypted secret and forwards only the score data to the browser.
+The Cloudflare Worker is the one piece of server-side code in the project. It acts as a secure proxy for the two APIs that require authentication keys — football-data.org (scores) and Groq (AI insights) — neither of which can be safely called from browser-side JavaScript. The Worker holds both keys as encrypted secrets and forwards only the results to the browser. It also owns a small KV store used to cache generated insights (see [AI Insights Flow](#ai-insights-flow) below).
 
 ### Tech Stack
 
@@ -145,9 +169,11 @@ The Cloudflare Worker is the one piece of server-side code in the project. It ex
 | Build tool | Vite 5 | Dev server and production bundler |
 | Styling | Global CSS (no scoped styles) | Shared classes across components |
 | Backend proxy | Cloudflare Workers | Secure API key proxy with edge caching |
+| Insights cache | Cloudflare Workers KV | Stores generated AI insights keyed by data hash |
 | Live weather | Open-Meteo API | No-auth match-day temperature fetches |
 | Live scores | football-data.org API v4 | Match results and live scores |
-| State persistence | `localStorage` | Slot assignments and winner states |
+| AI insights | Llama 3.3 70B via [Groq](https://groq.com/) | Written analysis of the computed statistics |
+| State persistence | `localStorage` | Slot assignments, winner states, pinned insights |
 | Hosting | GitHub Pages | Static site hosting via GitHub Actions |
 
 ### Component Tree
@@ -157,10 +183,13 @@ App.vue                        – tab navigation, score polling (60s interval)
 ├── BracketView.vue            – slot assignment state, SlotEditor orchestration
 │   ├── KnockoutMatch.vue      – score display, winner logic, long-press handler
 │   └── SlotEditor.vue        – team assignment overlay with datalist autocomplete
-└── ScheduleView.vue           – passes scores prop to groups
-    └── GroupSection.vue       – group title and team list
-        └── GroupMatch.vue     – score display, winner logic, live temp fetch
+├── ScheduleView.vue           – passes scores prop to groups
+│   └── GroupSection.vue       – group title and team list
+│       └── GroupMatch.vue     – score display, winner logic, live temp fetch
+└── InsightsView.vue           – computed stats, climate chart, AI insights + pinning
 ```
+
+The computed statistics that drive the Insights tab live in [`src/utils/insights.js`](src/utils/insights.js) (`computeInsights`), which builds group standings and per-team climate/timezone aggregates from the live scores.
 
 ### Data Files
 
@@ -175,7 +204,7 @@ src/data/
 ### Live Scores Flow
 
 ```
-Browser → Cloudflare Worker (wc26-scores.vikasbhatia.workers.dev)
+Browser → Cloudflare Worker (wc26-scores.neel-dhanesha.workers.dev)
         → football-data.org API (secret key never leaves the Worker)
         → normalise team names
         → cache at edge for 60 seconds
@@ -186,6 +215,27 @@ Each match card looks up its score by "home|away" key
 ```
 
 The 60-second edge cache means football-data.org receives at most one request per minute regardless of how many visitors are on the site simultaneously.
+
+### AI Insights Flow
+
+When you click "Generate insights", the frontend computes the statistics locally (`computeInsights`) and POSTs them to the Worker's `/analysis` endpoint. The Worker then does the slow, key-sensitive work that can't happen in the browser:
+
+```
+Browser → POST /analysis  (computed stats: teams, elevation tiers, headlines)
+        → Worker hashes the tournament data → KV cache key
+        → cache HIT?  return the stored insights instantly (~0.4s)
+        → cache MISS? build a prompt → call Groq (Llama 3.3 70B)
+                     → parse the JSON array of 4 insights
+                     → store in KV (keyed by data hash, 1-day TTL)
+                     → return the insights (~2–3s)
+```
+
+Two design choices matter here:
+
+- **The cache key is a hash of the tournament data only** (teams, elevation tiers, headline figures) — *not* the per-session state. So the first click for a given set of results pays the ~2–3s generation cost, and every click after that is an instant cache hit until new match results change the data.
+- **The model is asked for structured JSON** (`response_format: json_object`) and told to cite only numbers present in the supplied data, which keeps the four returned insights parseable and grounded.
+
+The Worker caps the Groq call with a timeout and returns a retryable error on failure; the frontend silently retries a couple of times before surfacing an error, so a cold generation almost always succeeds without the user noticing.
 
 ### Match ID Scheme
 
@@ -242,13 +292,19 @@ Each team's name appears in a colour-coded pill based on their training climate:
 
 The match card also shows the host city's average July temperature, and for recent matches, the actual forecast temperature on match day fetched in real time.
 
+### Exploring the Insights Tab
+
+Switch to the **Insights** tab. At the top are headline figures computed from every finished group stage match — the climate-comfort win rate, goals-per-game by altitude, and the timezone-travel gap between qualifiers and eliminated teams — followed by a per-team climate comfort chart you can sort by team, temperature gap, or points.
+
+Below that, press **Generate insights** to have an AI model read the computed statistics and write four short observations about patterns in the data. The first generation for a given set of results takes a couple of seconds; after that it's cached and instant. Pin any insight you want to keep — pinned insights persist in your browser. As always with AI, the findings are a starting point: verify anything surprising against the numbers shown above.
+
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
 
 ---
 
 ## Deployment
 
-The frontend deploys automatically — pushing to `main` is all that's needed. The Cloudflare Worker is deployed separately via Wrangler and only needs to be redeployed if `workers/scores.js` changes.
+The frontend deploys automatically — pushing to `main` is all that's needed. The Cloudflare Worker is deployed separately via Wrangler and only needs to be redeployed if `workers/scores.js` or `wrangler.toml` changes (`wrangler deploy`).
 
 ### GitHub Actions Workflow
 
@@ -262,20 +318,22 @@ See [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) for the full 
 
 ### Moving to a Custom Domain
 
-The site is currently hosted at `vikasbhatia.github.io/cloudy-with-a-chance-of-football/` for testing. To move it to `bracket.neeldhanesha.com`:
+The site is currently hosted at `neeldhan.github.io/cloudy-with-a-chance-of-football/` for testing. To move it to `wc26.neeldhanesha.com`:
 
-1. Add a DNS CNAME record: `bracket` → `vikasbhatia.github.io`
-2. Remove the `base` option from `vite.config.js` (currently set to the GitHub Pages subdirectory path)
-3. Push to `main` — GitHub Actions handles the rest
+1. Add a DNS CNAME record: `wc26` → `neeldhan.github.io`
+2. Update `public/CNAME` to `wc26.neeldhanesha.com` (it currently still contains the older `bracket.neeldhanesha.com`)
+3. Remove the `base` option from `vite.config.js` (currently set to the GitHub Pages subdirectory path)
+4. Push to `main` — GitHub Actions handles the rest
 
-The `public/CNAME` file already contains `bracket.neeldhanesha.com`, so GitHub Pages will recognise the custom domain as soon as DNS propagates.
+GitHub Pages will recognise the custom domain as soon as DNS propagates and the updated `CNAME` file is deployed.
 
-### Rotating the API Key
+### Rotating the API Keys
 
-The `FOOTBALL_DATA_API_KEY` secret is stored in Cloudflare and is never in any file or environment variable. To update it:
+Both `FOOTBALL_DATA_API_KEY` and `GROQ_API_KEY` are stored as encrypted Cloudflare secrets and are never in any file or environment variable. To update either one, re-run the corresponding command and paste the new key:
 
 ```bash
 wrangler secret put FOOTBALL_DATA_API_KEY
+wrangler secret put GROQ_API_KEY
 ```
 
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
@@ -289,6 +347,15 @@ wrangler secret put FOOTBALL_DATA_API_KEY
 * **Knockout bracket is manual** — bracket slots must be filled in by hand once group stage results are known. There is no automatic propagation of group standings into the knockout draw
 * **football-data.org free tier** — the free tier has rate limits. The 60-second edge cache in the Worker ensures these are not hit under normal traffic, but very high traffic spikes could theoretically exhaust the per-minute limit
 * **No server-side rendering** — this is a fully client-side static app; initial page load fetches everything from flat data files and the Worker
+* **AI insights can be wrong** — the generated observations come from a language model. It's instructed to cite only numbers present in the data, and the app shows a "double-check findings" note, but it can still misread or overstate a pattern. Treat the AI section as a starting point, not authority. The insights are also only as current as the cached result for a given set of match data (cached for up to a day, or until the results change)
+* **Groq free-tier limits** — the AI feature runs on Groq's free tier, which has per-minute rate limits. The KV cache means a given set of results is only generated once, so normal use stays well within limits, but a burst of never-before-seen requests could hit them
+
+### Why Groq (and not OpenRouter or Gemini)?
+
+The AI insights feature went through a few backends before landing on Groq, and the reasoning is worth recording:
+
+* **OpenRouter's free tier doesn't work from Cloudflare Workers.** The exact same request completes in ~10 seconds from a normal machine but consistently fails to return within 30–55 seconds when made from the Worker. OpenRouter's free tier appears to throttle traffic from Cloudflare's shared egress IPs heavily enough that requests effectively never complete. Its random free-model router also sometimes selected the wrong kind of model entirely (e.g. a content-safety classifier) or a slow reasoning model. Groq, on separate infrastructure, returns in ~2–3 seconds from the same Worker.
+* **Google Gemini was not actually the problem.** An earlier version of this feature targeted Gemini and hit a wall, but that turned out to be a red herring: the app was calling a *stale, dead Worker endpoint* the whole time (a leftover `VITE_SCORES_URL` in a local `.env.local` that overrode the real one), so nothing was reaching the intended backend regardless of provider. Gemini's `generateContent` API had in fact worked fine from the Worker. We note this only so the history is clear — no claim is made that Gemini is better or worse than the current setup.
 
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
 
@@ -318,6 +385,8 @@ If you discover a team name mismatch (a match with a known score that isn't appe
 * [football-data.org API v4 documentation](https://www.football-data.org/documentation/quickstart)
 * [Open-Meteo API documentation](https://open-meteo.com/en/docs)
 * [Cloudflare Workers documentation](https://developers.cloudflare.com/workers/)
+* [Cloudflare Workers KV documentation](https://developers.cloudflare.com/kv/)
+* [Groq API documentation](https://console.groq.com/docs)
 * [Vite environment variables](https://vitejs.dev/guide/env-and-mode)
 * [Vue 3 Options API](https://vuejs.org/guide/introduction.html)
 * [GitHub Pages custom domains](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site)
@@ -331,9 +400,10 @@ If you discover a team name mismatch (a match with a known score that isn't appe
 * **football-data.org** for providing a free tier API with comprehensive World Cup data
 * **Open-Meteo** for a genuinely free, no-auth-required weather API
 * **Cloudflare** for making serverless edge computing accessible and free at this scale
+* **Groq** for genuinely fast, free LLM inference that makes the AI insights feature feel instant
 
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
 
 ---
 
-**Last Updated: 19 June 2026**
+**Last Updated: 7 July 2026**
