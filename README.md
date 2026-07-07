@@ -76,8 +76,9 @@ There's also an **Insights** tab that turns the raw results into analysis: it cr
 
 * **Computed headline stats** — the app tallies every finished group stage match to answer the questions the whole project is built around: what's the win rate for teams playing within 8°C of their home climate versus beyond it, how do goals-per-game change with venue altitude, and how much bigger is the average timezone gap for eliminated teams than for qualifiers
 * **Climate comfort chart** — a sorted bar for every team showing the average temperature gap between their training base and the venues they played in, coloured blue (close to home) to red (far out of comfort), with qualified teams highlighted
+* **"Core Findings" cards** — four always-visible findings (climate comfort, altitude, timezone fatigue, climate extremes) computed live from the same data — not AI-generated, and never stale; see [Computed Insights](#computed-insights-non-ai) for exactly how each one is derived
 * **AI-generated insights** — a "Generate insights" button that sends the computed statistics to a large language model (Llama 3.3 via Groq) and gets back four short, specific written observations about patterns in the data, each tagged (Resilient, Cautionary, Outlier, Pattern, Record, Surprising)
-* **Pin the good ones** — any generated insight can be pinned to keep it around; pins are saved to `localStorage`. A set of hand-written "seed" insights is shown by default so the section is never empty
+* **Pin the good ones** — any generated insight can be pinned to keep it around; pins are saved to `localStorage`. Before your first generation, four placeholder cards computed from the same live data (not hardcoded) fill that space so the section is never empty
 * **Grounded, cached, and honest** — the model is instructed to only cite numbers that appear verbatim in the data, results are cached so repeat views are instant, and the UI carries a visible "AI can make mistakes — always double-check findings" note
 
 ### Mobile
@@ -215,6 +216,39 @@ Each match card looks up its score by "home|away" key
 ```
 
 The 60-second edge cache means football-data.org receives at most one request per minute regardless of how many visitors are on the site simultaneously.
+
+### Computed Insights (Non-AI)
+
+Everything on the Insights tab *except* the "Generate insights" button's output is plain JavaScript arithmetic over the live scores — no network call, no LLM, fully deterministic, and recomputed on every score refresh (every 60s, same cadence as live scores). This section documents exactly what's computed, since these numbers also form the "ground truth" the AI prompt is built from.
+
+**`computeInsights(scores)`** in [`src/utils/insights.js`](src/utils/insights.js) is the single source of truth for the tab. It walks every *finished* group stage match once and returns:
+
+| Field | What it is |
+|---|---|
+| `teamsByDelta` / `teamsByTz` | Every team with at least one finished match, each with `avgDelta` (mean absolute gap between training temperature and matchday venue temperature, °C) and `avgTzDiff` (mean absolute timezone gap, hours) — sorted for the climate and timezone charts respectively |
+| `elevTiers` | Goals-per-game bucketed into four venue elevation bands (sea level / low / mid / high). Guadalajara (1,566m) falls in "mid"; Mexico City (2,240m, the highest World Cup venue ever hosted) falls in "high" |
+| `headlines` | The hero-stat aggregates: climate comfort/discomfort win rate (a team counts as "comfortable" if its average gap is under `COMFORT_THRESHOLD`, currently 8°C), goals/game per elevation tier, and average timezone gap for qualified vs. eliminated teams |
+| `tzSpotlight` | Three specific teams — `resilient`, `homeComfort`, `furthest` — picked from the per-team data (see below). Powers both the timezone hero card and the three callout cards, so they can never disagree with each other |
+| `qualified` (per team) | Whichever two teams currently top their group by points → goal difference → goals-for, evaluated continuously as results come in — not gated on the group stage being complete |
+
+**`tzSpotlight` selection logic:**
+- `resilient` — the *qualified* team with the largest average timezone gap (travelled furthest and still advanced)
+- `homeComfort` — the team with the *smallest* average timezone gap of anyone, ties broken by points (effectively "played at home")
+- `furthest` — the largest average timezone gap among *eliminated* teams; falls back to the overall largest gap early in the tournament, before any team has actually been eliminated yet
+
+**"Core Findings" cards** (`permanentInsights()` in `InsightsView.vue`) are four always-visible cards built directly from the fields above. They are recomputed on every render — nothing here is cached or stored:
+
+1. **Climate Comfort** — `headlines.comfortWinPct` vs. `discomfortWinPct`, with their ratio (skipped if there's no discomfort-win data yet, to avoid a divide-by-zero).
+2. **Altitude Suppresses Scoring** — `headlines.midAltGoals` (Guadalajara) vs. `seaLevelGoals`, mentioning `highAltGoals` (Mexico City) too.
+3. **Timezone Fatigue** — `headlines.tzQualifiedAvg` vs. `tzEliminatedAvg`, and the gap between them.
+4. **Climate Extremes** — deliberately *not* a fixed °C threshold. It takes the worst 25% of teams by climate gap (at least one team, so this card can never disappear even early in the tournament) and reports their point range. The closing sentence is adaptive: it says the pattern is "a striking tipping point" only if every team in that worst-quartile cohort scored ≤1 point, and otherwise honestly says results have been "more mixed than a clean tipping point would suggest." A fixed threshold risks going quiet (no team crosses it yet) or eventually asserting a clean pattern that stops being true — the floating cohort avoids both failure modes at the cost of a less catchy, non-fixed headline number.
+
+**Seed insights** (`seedInsights()`) are the four placeholder cards shown in the "Current" section before you've ever clicked "Generate insights" — tagged Resilient / Cautionary / Outlier / Surprising. These are also computed, not hardcoded copy and not AI-written:
+- **Resilient** reuses `tzSpotlight.resilient` directly, so it always matches the hero card and timezone callouts
+- **Cautionary** is the eliminated team (or the overall worst, early on) with the largest climate gap
+- **Outlier** and **Surprising** are the top two *qualified* teams by climate gap — teams that "beat the trend" and advanced despite a large mismatch
+
+Seeding happens exactly once per page load: a `watch` on the `insights` computed property fires only while `currentInsights` is still empty, so the 60-second score-polling can never clobber a real AI generation you're currently looking at. Once you click "Generate insights", `currentInsights` is replaced entirely by the AI's output for the rest of that session — seeds never return unless you reload the page before generating.
 
 ### AI Insights Flow
 

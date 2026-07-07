@@ -287,63 +287,10 @@ const ANALYSIS_URL = import.meta.env.VITE_SCORES_URL
   ? import.meta.env.VITE_SCORES_URL.replace(/\/$/, '') + '/analysis'
   : null
 
-const PERMANENT_INSIGHTS = [
-  {
-    tag: 'Finding',
-    team: 'Climate Comfort',
-    stat: '39% vs. 27% win rate',
-    body: 'Teams playing within 8°C of their home training temperature won 39% of individual match sides, versus 27% for teams in more alien conditions — a consistent 1.45× advantage across the full 48-team field.',
-  },
-  {
-    tag: 'Finding',
-    team: 'Altitude Suppresses Scoring',
-    stat: '1.50 gpg vs. 2.96 at sea level',
-    body: 'Guadalajara (1,566m) produced the tournament\'s most defensive football — 1.50 goals per game, exactly half the sea-level rate. Mexico City at 2,240m is the highest World Cup venue ever hosted.',
-  },
-  {
-    tag: 'Finding',
-    team: 'Timezone Fatigue',
-    stat: 'Qualifiers avg 6.0h · Eliminated avg 6.7h',
-    body: 'Teams that advanced from the group stage averaged 6.0h of timezone adjustment per match, versus 6.7h for eliminated sides. The gap is modest but consistent — not driven by a handful of outliers.',
-  },
-  {
-    tag: 'Finding',
-    team: 'The 15°C Threshold',
-    stat: 'Every team >15°C gap: 0–1 points',
-    body: 'Every team with an average climate gap above 15°C scored 0 or 1 points across their three group matches. Below that threshold results were mixed — suggesting a rough tipping point for climate adaptation.',
-  },
-]
-
-const SEED_INSIGHTS = [
-  {
-    id: 'seed-japan',
-    tag: 'Resilient',
-    team: 'Japan',
-    stat: '14.3h avg tz gap · 5 pts · Qualified',
-    body: 'Japan faced one of the largest average timezone gaps of any qualifier — 14.3 hours per match — yet advanced comfortably with 5 points. Their preparation overcame what the data suggests should be a significant handicap.',
-  },
-  {
-    id: 'seed-qatar',
-    tag: 'Cautionary',
-    team: 'Qatar',
-    stat: '20.5°C gap · 1 point',
-    body: 'The most extreme climate mismatch in the tournament — training in 38°C Doha then competing in venues around 18°C. Qatar scored just 1 point across three group stage matches: the clearest example of climate misalignment costing a side dearly.',
-  },
-  {
-    id: 'seed-egypt',
-    tag: 'Outlier',
-    team: 'Egypt',
-    stat: '13.3°C gap · 5 pts · Qualified',
-    body: 'Egypt defied the climate comfort trend, qualifying with 5 points despite a 13.3°C average gap — among the largest mismatches of any team to advance. Training in 32°C Cairo and competing in cooler North American venues didn\'t stop them.',
-  },
-  {
-    id: 'seed-netherlands',
-    tag: 'Surprising',
-    team: 'Netherlands',
-    stat: '10°C gap · 7 points · Qualified',
-    body: 'One of the largest climate gaps among high-performing qualifiers. The Netherlands trained in 19°C Zeist and played in venues averaging 29°C — yet finished with 7 points, suggesting strong squads can overcome moderate climate mismatches.',
-  },
-]
+// PERMANENT_INSIGHTS and SEED_INSIGHTS used to be hardcoded here. Both are
+// now computed live from `insights` — see the permanentInsights() and
+// seedInsights() methods below — so their numbers track actual results
+// instead of going stale as the tournament progresses.
 
 function loadPinned() {
   try { return JSON.parse(localStorage.getItem('wc26PinnedInsights') || '[]') }
@@ -365,7 +312,9 @@ export default {
       climateSort:     { key: 'avgDelta', asc: true },
       tzSort:          { key: 'avgTzDiff', asc: true },
       pinnedInsights:  loadPinned(),
-      currentInsights: [...SEED_INSIGHTS],
+      // Seeded from live data by the `insights` watcher below, once match
+      // results are available — see seedInsights().
+      currentInsights: [],
       generating:      false,
       generateError:   null,
       MAX_PINNED:      12,
@@ -385,6 +334,21 @@ export default {
     sortedTz() {
       if (!this.insights) return []
       return this.applySort(this.insights.teamsByTz, this.tzSort)
+    },
+  },
+
+  watch: {
+    // Seed the placeholder "current" insight cards once live match data first
+    // becomes available. Guarded by currentInsights.length so this fires
+    // exactly once per session — later score refreshes (every 60s) must never
+    // clobber a real AI generation the user is currently looking at.
+    insights: {
+      immediate: true,
+      handler(val) {
+        if (val && this.currentInsights.length === 0) {
+          this.currentInsights = this.seedInsights()
+        }
+      },
     },
   },
 
@@ -450,9 +414,12 @@ export default {
           elevTiers:        this.insights.elevTiers,
           comfortThreshold: this.insights.comfortThreshold,
           headlines:        this.insights.headlines,
+          // currentInsights already covers whatever's currently on screen —
+          // the seed placeholders before a first generation, or real AI
+          // results after one. permanentInsights() is listed separately since
+          // the Core Findings cards are always shown alongside, regardless.
           alreadyCovered: [
-            ...PERMANENT_INSIGHTS.map(i => i.team),
-            ...SEED_INSIGHTS.map(i => i.team),
+            ...this.permanentInsights().map(i => i.team),
             ...this.pinnedInsights.map(i => i.team),
             ...this.currentInsights.map(i => i.team),
           ],
@@ -507,8 +474,130 @@ export default {
       return this.pinnedInsights.length < this.MAX_PINNED
     },
 
+    // "Core Findings" cards — always-visible curated analysis, now computed
+    // from live headline stats instead of a fixed launch-day snapshot.
     permanentInsights() {
-      return PERMANENT_INSIGHTS
+      if (!this.insights) return []
+      const { headlines, comfortThreshold, teamsByDelta } = this.insights
+      const findings = []
+
+      const comfortRatio = headlines.discomfortWinPct > 0
+        ? headlines.comfortWinPct / headlines.discomfortWinPct
+        : null
+      findings.push({
+        tag: 'Finding',
+        team: 'Climate Comfort',
+        stat: `${headlines.comfortWinPct.toFixed(0)}% vs. ${headlines.discomfortWinPct.toFixed(0)}% win rate`,
+        body: `Teams playing within ${comfortThreshold}°C of their home training temperature have won ${headlines.comfortWinPct.toFixed(0)}% of individual match sides, versus ${headlines.discomfortWinPct.toFixed(0)}% for teams in more alien conditions`
+          + (comfortRatio ? ` — a ${comfortRatio.toFixed(2)}× advantage across the 48-team field.` : ' across the 48-team field.'),
+      })
+
+      // Guadalajara (1,566m) sits in the "mid" elevation tier, Mexico City
+      // (2,240m) in "high" — see ELEV_TIERS in utils/insights.js.
+      findings.push({
+        tag: 'Finding',
+        team: 'Altitude Suppresses Scoring',
+        stat: `${headlines.midAltGoals.toFixed(2)} gpg vs. ${headlines.seaLevelGoals.toFixed(2)} at sea level`,
+        body: `Guadalajara (1,566m) has averaged ${headlines.midAltGoals.toFixed(2)} goals per game so far, versus ${headlines.seaLevelGoals.toFixed(2)} at sea-level venues. Mexico City, at 2,240m, is the highest World Cup venue in history — averaging ${headlines.highAltGoals.toFixed(2)} goals per game there.`,
+      })
+
+      const tzGap = Math.abs(headlines.tzQualifiedAvg - headlines.tzEliminatedAvg)
+      findings.push({
+        tag: 'Finding',
+        team: 'Timezone Fatigue',
+        stat: `Qualifiers avg ${headlines.tzQualifiedAvg.toFixed(1)}h · Eliminated avg ${headlines.tzEliminatedAvg.toFixed(1)}h`,
+        body: `Teams that have advanced from the group stage have averaged ${headlines.tzQualifiedAvg.toFixed(1)}h of timezone adjustment per match, versus ${headlines.tzEliminatedAvg.toFixed(1)}h for eliminated sides — a ${tzGap.toFixed(1)}h gap between the two groups.`,
+      })
+
+      // The top quartile by climate gap, rather than a fixed °C cutoff. A
+      // hardcoded threshold (e.g. ">15°C") can go quiet early in the
+      // tournament if no team happens to have crossed it yet, or stop being
+      // the interesting cutoff once more results are in. Floating the cohort
+      // as "the worst quartile of gaps, whatever that is right now" keeps
+      // this card always populated and always describing the current worst
+      // mismatches, at the cost of a less catchy fixed-number headline.
+      const byGapDesc  = [...teamsByDelta].sort((a, b) => b.avgDelta - a.avgDelta)
+      const cohortSize = Math.max(1, Math.ceil(byGapDesc.length * 0.25))
+      const cohort      = byGapDesc.slice(0, cohortSize)
+      if (cohort.length > 0) {
+        const cohortFloor = cohort[cohort.length - 1].avgDelta
+        const pts    = cohort.map(t => t.P)
+        const maxPts = Math.max(...pts)
+        const minPts = Math.min(...pts)
+        const rangeLabel = minPts === maxPts ? this.ptsLabel(maxPts) : `${minPts}–${maxPts} points`
+        findings.push({
+          tag: 'Finding',
+          team: 'Climate Extremes',
+          stat: `Worst ${cohort.length} gap${cohort.length === 1 ? '' : 's'} (≥${cohortFloor.toFixed(1)}°C): ${rangeLabel}`,
+          body: `The ${cohort.length} team${cohort.length === 1 ? '' : 's'} with the largest average climate mismatch — ${cohortFloor.toFixed(1)}°C or more — ${cohort.length === 1 ? 'has' : 'have'} scored ${rangeLabel} across their group matches so far. `
+            + (maxPts <= 1 ? 'A striking tipping point for climate adaptation.' : 'Results at the extreme end have been more mixed than a clean tipping point would suggest.'),
+        })
+      }
+
+      return findings
+    },
+
+    // Placeholder "current insight" cards shown before the user's first
+    // real AI generation — see the `insights` watcher above. Reuses
+    // tzSpotlight so the "Resilient" card always matches the hero stat and
+    // timezone callouts rather than telling a different story.
+    seedInsights() {
+      if (!this.insights) return []
+      const { tzSpotlight, teamsByDelta } = this.insights
+      const seeds = []
+
+      if (tzSpotlight.resilient) {
+        const t = tzSpotlight.resilient
+        seeds.push({
+          id: `seed-resilient-${t.name}`,
+          tag: 'Resilient',
+          team: t.name,
+          stat: `${t.avgTzDiff.toFixed(1)}h avg tz gap · ${this.ptsLabel(t.P)} · Qualified`,
+          body: `${t.name} faced one of the largest average timezone gaps of any qualifier — ${t.avgTzDiff.toFixed(1)} hours per match — yet advanced with ${this.ptsLabel(t.P)}. Their preparation overcame what the data suggests should be a significant handicap.`,
+        })
+      }
+
+      // Biggest climate mismatch among eliminated teams; falls back to the
+      // overall biggest mismatch early in the tournament before anyone's
+      // been eliminated yet.
+      const byDeltaDesc = [...teamsByDelta].sort((a, b) => b.avgDelta - a.avgDelta)
+      const cautionary = byDeltaDesc.find(t => !t.qualified) ?? byDeltaDesc[0]
+      if (cautionary) {
+        seeds.push({
+          id: `seed-cautionary-${cautionary.name}`,
+          tag: 'Cautionary',
+          team: cautionary.name,
+          stat: `${cautionary.avgDelta.toFixed(1)}°C gap · ${this.ptsLabel(cautionary.P)}`,
+          body: `The most extreme climate mismatch of the tournament so far — averaging a ${cautionary.avgDelta.toFixed(1)}°C gap between training and matchday conditions. ${cautionary.name} has taken just ${this.ptsLabel(cautionary.P)} across their group matches: a clear example of climate misalignment costing a side dearly.`,
+        })
+      }
+
+      // The two qualified teams with the biggest climate gaps — i.e. teams
+      // that defied the climate-comfort trend and advanced anyway.
+      const qualifiedByDeltaDesc = byDeltaDesc.filter(t => t.qualified)
+      const outlier = qualifiedByDeltaDesc[0]
+      if (outlier) {
+        seeds.push({
+          id: `seed-outlier-${outlier.name}`,
+          tag: 'Outlier',
+          team: outlier.name,
+          stat: `${outlier.avgDelta.toFixed(1)}°C gap · ${this.ptsLabel(outlier.P)} · Qualified`,
+          body: `${outlier.name} has defied the climate comfort trend, qualifying with ${this.ptsLabel(outlier.P)} despite a ${outlier.avgDelta.toFixed(1)}°C average gap — among the largest mismatches of any team to advance.`,
+        })
+      }
+
+      const surprising = qualifiedByDeltaDesc[1]
+      if (surprising) {
+        seeds.push({
+          id: `seed-surprising-${surprising.name}`,
+          tag: 'Surprising',
+          team: surprising.name,
+          stat: `${surprising.avgDelta.toFixed(1)}°C gap · ${this.ptsLabel(surprising.P)} · Qualified`,
+          body: `Another team defying the climate narrative: ${surprising.name} has qualified with ${this.ptsLabel(surprising.P)} despite a ${surprising.avgDelta.toFixed(1)}°C average climate gap.`,
+        })
+      }
+
+      return seeds
     },
   },
 }
