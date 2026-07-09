@@ -475,6 +475,15 @@ async function handleScores(request, env, ctx) {
       away:   m.score.fullTime.away,
       status: m.status,
       winner: m.score.winner ?? null,
+      // GROUP_STAGE / LAST_32 / LAST_16 / QUARTER_FINALS / ... — needed to
+      // resolve "best 3rd place" bracket slots correctly (see
+      // resolveThirdPlaceSlot in bracketProgression.js). A 3rd-place team's
+      // candidate group letters can legitimately overlap between two
+      // different Round of 32 slots, and if both teams then advance, they
+      // can end up playing EACH OTHER AGAIN in a later round — so "have
+      // these two teams ever played" isn't a safe enough check on its own;
+      // it has to specifically be their Round of 32 meeting.
+      stage:  m.stage ?? null,
     }
   }
 
