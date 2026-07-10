@@ -186,109 +186,6 @@
         </div>
       </section>
 
-      <!-- ── AI Insights ────────────────────────── -->
-      <section class="ins-section ai-section">
-        <div class="sec-eyebrow">AI Insights</div>
-        <h3 class="sec-heading">Patterns beyond the obvious</h3>
-        <p class="sec-body">
-          Everything above is quantitative — the raw numbers, arranged into charts and headline stats that directly answer the questions this project set out to ask. That's already useful on its own.
-        </p>
-        <p class="sec-body">
-          This section is the other half: qualitative insights. What can you read into the data beyond the numbers? What patterns aren't obvious at a glance, and do they actually support our hypotheses? That's a harder question for a spreadsheet, so we ask an AI model to take a pass.
-        </p>
-        <p class="ai-generate-hint">
-          Each click surfaces a fresh batch of up to 4 insights — up to 3 rounds (12 total) per set of results, then check back once more matches finish.
-        </p>
-
-        <div class="ai-generate-row">
-          <button
-            class="generate-btn"
-            :class="{ 'generating': generating }"
-            :disabled="generating || !insights || atRoundLimit"
-            @click="generateInsights"
-          >
-            <svg class="gemini-star" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="gs" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#4285f4"/>
-                  <stop offset="100%" stop-color="#a142f4"/>
-                </linearGradient>
-              </defs>
-              <path d="M12 2c0 0 1.2 7.5 4.5 10.5C13.2 15.5 12 22 12 22c0 0-1.2-6.5-4.5-9.5C10.8 9.5 12 2 12 2z" fill="url(#gs)"/>
-              <path d="M2 12c0 0 7.5-1.2 10.5-4.5C15.5 10.8 22 12 22 12c0 0-6.5 1.2-9.5 4.5C9.5 13.2 2 12 2 12z" fill="url(#gs)"/>
-            </svg>
-            {{ generateBtnLabel }}
-          </button>
-
-          <div class="gemini-badge">
-            <svg class="gemini-star-sm" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="gs2" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#4285f4"/>
-                  <stop offset="100%" stop-color="#a142f4"/>
-                </linearGradient>
-              </defs>
-              <path d="M12 2c0 0 1.2 7.5 4.5 10.5C13.2 15.5 12 22 12 22c0 0-1.2-6.5-4.5-9.5C10.8 9.5 12 2 12 2z" fill="url(#gs2)"/>
-              <path d="M2 12c0 0 7.5-1.2 10.5-4.5C15.5 10.8 22 12 22 12c0 0-6.5 1.2-9.5 4.5C9.5 13.2 2 12 2 12z" fill="url(#gs2)"/>
-            </svg>
-            AI-generated — can make mistakes, and correlation isn't causation. It can be a little eager connecting dots, so give these a human read.
-          </div>
-        </div>
-
-        <p v-if="generateError" class="generate-error">{{ generateError }}</p>
-        <p v-else-if="atRoundLimit" class="pin-limit-note">
-          That's every insight we've got for the current results — check back once more matches finish.
-        </p>
-
-        <!-- pinned insights -->
-        <div v-if="pinnedInsights.length" class="ai-group">
-          <div class="ai-group-label">Pinned</div>
-          <div class="stories-grid">
-            <div v-for="ins in pinnedInsights" :key="ins.id" class="story story-ai story-pinned">
-              <div class="story-header-row">
-                <div class="story-tag">{{ ins.tag }}</div>
-                <button class="pin-btn pin-btn-active" title="Unpin" @click="unpinInsight(ins.id)">
-                  <svg viewBox="0 0 16 16" fill="currentColor"><path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72a5.922 5.922 0 0 1 1.013.16l3.134-3.133a2.772 2.772 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z"/></svg>
-                </button>
-              </div>
-              <div class="story-team">{{ ins.team }}</div>
-              <div class="story-stat">{{ ins.stat }}</div>
-              <p class="story-body">{{ ins.body }}</p>
-            </div>
-          </div>
-          <p v-if="pinnedInsights.length >= MAX_PINNED" class="pin-limit-note">
-            Pinned limit reached ({{ MAX_PINNED }}). Unpin some to save more.
-          </p>
-        </div>
-
-        <!-- current insights -->
-        <div class="ai-group">
-          <div v-if="pinnedInsights.length" class="ai-group-label">Current</div>
-          <p v-if="currentInsights.length === 0" class="ai-empty-state">
-            No insights here yet — generate some above.
-          </p>
-          <div v-else class="stories-grid">
-            <div v-for="ins in currentInsights" :key="ins.id" class="story story-ai">
-              <div class="story-header-row">
-                <div class="story-tag">{{ ins.tag }}</div>
-                <button
-                  class="pin-btn"
-                  :class="{ 'pin-btn-active': isPinned(ins.id) }"
-                  :disabled="isPinned(ins.id) || !canPin()"
-                  :title="isPinned(ins.id) ? 'Already pinned' : canPin() ? 'Pin this insight' : 'Pinned limit reached'"
-                  @click="pinInsight(ins)"
-                >
-                  <svg viewBox="0 0 16 16" fill="currentColor"><path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72a5.922 5.922 0 0 1 1.013.16l3.134-3.133a2.772 2.772 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z"/></svg>
-                </button>
-              </div>
-              <div class="story-team">{{ ins.team }}</div>
-              <div class="story-stat">{{ ins.stat }}</div>
-              <p class="story-body">{{ ins.body }}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
     </template>
   </div>
 </template>
@@ -297,35 +194,9 @@
 import { computeInsights } from '../utils/insights.js'
 import { tempToColor }     from '../utils/temperature.js'
 
-// The Worker's AI endpoint lives at <scores worker URL>/analysis. Built once
-// at module load from the same env var App.vue uses for live scores — if
-// that's unset (local dev without a Worker configured), ANALYSIS_URL stays
-// null and the Generate button is disabled (see the button's :disabled
-// binding in the template).
-const ANALYSIS_URL = import.meta.env.VITE_SCORES_URL
-  ? import.meta.env.VITE_SCORES_URL.replace(/\/$/, '') + '/analysis'
-  : null
-
 // PERMANENT_INSIGHTS used to be hardcoded here. It's now computed live from
 // `insights` — see the permanentInsights() method below — so its numbers
 // track actual results instead of going stale as the tournament progresses.
-// (There used to be a SEED_INSIGHTS placeholder shown before the first real
-// AI generation too; removed in favour of a plain empty state, since
-// computed-but-not-AI content sitting in a section literally labelled "AI
-// Insights" was more confusing than a "click Generate" prompt.)
-
-// Pinned insights are the one piece of this tab that persists across page
-// loads — everything else (currentInsights, aiRound, etc.) is session-only
-// and starts fresh on every visit.
-function loadPinned() {
-  try { return JSON.parse(localStorage.getItem('wc26PinnedInsights') || '[]') }
-  catch { return [] }
-}
-
-function savePinned(list) {
-  try { localStorage.setItem('wc26PinnedInsights', JSON.stringify(list)) }
-  catch { /* storage full */ }
-}
 
 export default {
   props: {
@@ -339,22 +210,8 @@ export default {
     return {
       // Which column + direction the climate/timezone tables are currently
       // sorted by. Read/written by applySort()/setSort() below.
-      climateSort:     { key: 'avgDelta', asc: true },
-      tzSort:          { key: 'avgTzDiff', asc: true },
-      pinnedInsights:  loadPinned(),
-      // Empty until the user's first "Generate insights" click.
-      currentInsights: [],
-      // How many batches of 4 have been generated for the CURRENT tournament
-      // data. Each click appends 4 more, up to MAX_AI_ROUNDS; resets to 0 if
-      // the underlying data changes (see the `insights` watcher).
-      aiRound:         0,
-      MAX_AI_ROUNDS:   3,   // keep in sync with MAX_ROUNDS in workers/scores.js
-      // JSON snapshot of the last-seen tournament data, used to detect a
-      // genuine change (new match results) vs. an identical 60s re-poll.
-      lastStatsKey:    null,
-      generating:      false,
-      generateError:   null,
-      MAX_PINNED:      12,
+      climateSort: { key: 'avgDelta', asc: true },
+      tzSort:      { key: 'avgTzDiff', asc: true },
     }
   },
 
@@ -377,43 +234,6 @@ export default {
     sortedTz() {
       if (!this.insights) return []
       return this.applySort(this.insights.teamsByTz, this.tzSort)
-    },
-
-    // True once 3 rounds (12 insights) have been generated for the current
-    // data — disables the Generate button and shows the "no more for now" note.
-    atRoundLimit() {
-      return this.aiRound >= this.MAX_AI_ROUNDS
-    },
-
-    generateBtnLabel() {
-      if (this.generating)  return 'Generating…'
-      if (this.atRoundLimit) return 'No more for now'
-      if (this.aiRound > 0)  return 'Generate 4 more'
-      return 'Generate insights'
-    },
-  },
-
-  watch: {
-    // Detect a REAL change in the underlying tournament data (new match
-    // results), as opposed to the 60s score-poll producing an identical
-    // reload. `insights` gets a new object identity every poll regardless of
-    // whether anything actually changed, so we compare a content snapshot
-    // rather than trusting the watcher firing at all. On a real change, old
-    // AI insights may cite now-stale numbers and a fresh round of
-    // generation becomes available — clear AI state so both are reflected.
-    insights: {
-      immediate: true,
-      handler(val) {
-        if (!val) return
-
-        const snapshotKey = this.statsSnapshotKey(val)
-        if (this.lastStatsKey !== null && snapshotKey !== this.lastStatsKey) {
-          this.currentInsights = []
-          this.aiRound         = 0
-          this.generateError   = null
-        }
-        this.lastStatsKey = snapshotKey
-      },
     },
   },
 
@@ -448,8 +268,8 @@ export default {
     },
 
     // "1 pt" vs "7 pts" — used anywhere a points total appears in prose
-    // (tzSpotlight callouts, Core Findings, seed-era code) so the grammar
-    // is never wrong for exactly 1 point.
+    // (tzSpotlight callouts, Core Findings) so the grammar is never wrong
+    // for exactly 1 point.
     ptsLabel(p) {
       return `${p} ${p === 1 ? 'pt' : 'pts'}`
     },
@@ -485,108 +305,6 @@ export default {
       if (p >= 4) return 'pts-4'
       if (p >= 1) return 'pts-1'
       return 'pts-0'
-    },
-
-    // The subset of `insights` the worker actually needs/hashes on. Shared by
-    // generateInsights() (the POST body) and statsSnapshotKey() (change
-    // detection) so the two can never drift out of sync with each other.
-    buildStatsPayload(insights) {
-      return {
-        teams: insights.teamsByDelta.map(t => ({
-          name: t.name, avgDelta: t.avgDelta, avgTzDiff: t.avgTzDiff,
-          P: t.P, qualified: t.qualified,
-        })),
-        elevTiers:        insights.elevTiers,
-        comfortThreshold: insights.comfortThreshold,
-        headlines:        insights.headlines,
-      }
-    },
-
-    statsSnapshotKey(insights) {
-      return JSON.stringify(this.buildStatsPayload(insights))
-    },
-
-    async generateInsights() {
-      if (!this.insights || this.generating || !ANALYSIS_URL || this.atRoundLimit) return
-      this.generating    = true
-      this.generateError = null
-      try {
-        const stats = {
-          ...this.buildStatsPayload(this.insights),
-          round: this.aiRound + 1,
-          // currentInsights already covers whatever AI results have
-          // accumulated from earlier rounds this session. permanentInsights()
-          // is listed separately since the Core Findings cards are always
-          // shown alongside, regardless.
-          alreadyCovered: [
-            ...this.permanentInsights().map(i => i.team),
-            ...this.pinnedInsights.map(i => i.team),
-            ...this.currentInsights.map(i => i.team),
-          ],
-        }
-        // The worker returns cached insights instantly, or generates them
-        // inline (~2-6s on a cache miss — it's two sequential AI calls, draft
-        // then critique). Occasionally the AI provider itself is briefly slow
-        // or rate-limited, returning a retryable error, so we give each click
-        // a few fresh attempts before giving up. Any success gets cached
-        // server-side, so this only ever costs the user extra time on a
-        // cold, unlucky run — never extra AI calls once one succeeds.
-        let incoming = null
-        let lastErr  = null
-        for (let attempt = 0; attempt < 3; attempt++) {
-          const res = await fetch(ANALYSIS_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(stats),
-          })
-          if (res.ok) { incoming = await res.json(); break }
-          const body = await res.json().catch(() => ({}))
-          lastErr = body.detail || body.error || `HTTP ${res.status}`
-          await new Promise(r => setTimeout(r, 1000))
-        }
-        if (!Array.isArray(incoming)) throw new Error(lastErr || 'please try again')
-        const mapped = incoming.map((ins, i) => ({
-          ...ins,
-          id: `gen-${Date.now()}-${i}`,
-        }))
-        // Every round appends, so each click adds 4 more insights on top of
-        // whatever's already showing.
-        this.currentInsights = [...this.currentInsights, ...mapped]
-        this.aiRound += 1
-      } catch (e) {
-        this.generateError = `Couldn't generate insights: ${e.message}`
-      } finally {
-        this.generating = false
-      }
-    },
-
-    // Pinning moves the card rather than copying it — it disappears from
-    // "Current" and reappears in "Pinned", never both at once.
-    pinInsight(insight) {
-      if (this.pinnedInsights.length >= this.MAX_PINNED) return
-      if (this.pinnedInsights.some(p => p.id === insight.id)) return
-      this.pinnedInsights.push({ ...insight })
-      this.currentInsights = this.currentInsights.filter(i => i.id !== insight.id)
-      savePinned(this.pinnedInsights)
-    },
-
-    // Unpinning moves the card back to "Current" — the mirror of pinning.
-    unpinInsight(id) {
-      const item = this.pinnedInsights.find(p => p.id === id)
-      if (!item) return
-      this.pinnedInsights  = this.pinnedInsights.filter(p => p.id !== id)
-      this.currentInsights = [...this.currentInsights, item]
-      savePinned(this.pinnedInsights)
-    },
-
-    // Used to grey out / relabel a card's pin button once it's already pinned.
-    isPinned(id) {
-      return this.pinnedInsights.some(p => p.id === id)
-    },
-
-    // Used to disable pin buttons once MAX_PINNED (12) is reached.
-    canPin() {
-      return this.pinnedInsights.length < this.MAX_PINNED
     },
 
     // "Core Findings" cards — always-visible curated analysis, now computed
@@ -1095,15 +813,6 @@ export default {
 .story-pos  { background: rgba(74,222,128,0.06);  border-color: rgba(74,222,128,0.15); }
 .story-neg  { background: rgba(239,68,68,0.06);   border-color: rgba(239,68,68,0.15); }
 .story-core { background: rgba(125,211,252,0.05); border-color: rgba(125,211,252,0.12); }
-.story-ai   { background: rgba(161,66,244,0.06);  border-color: rgba(161,66,244,0.18); }
-.story-pinned { border-color: rgba(161,66,244,0.4); }
-
-.story-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.2rem;
-}
 
 .story-tag {
   font-size: 0.62rem;
@@ -1131,124 +840,6 @@ export default {
   line-height: 1.55;
   opacity: 0.75;
   margin: 0;
-}
-
-/* ── AI section ── */
-.ai-generate-hint {
-  font-size: 0.7rem;
-  opacity: 0.5;
-  margin: 0 0 0.75rem;
-}
-
-.ai-generate-row {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.5rem;
-  margin: 0.25rem 0 1rem;
-}
-
-.generate-btn {
-  all: unset;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  background: rgba(161,66,244,0.15);
-  border: 1px solid rgba(161,66,244,0.35);
-  border-radius: 999px;
-  padding: 0.4rem 0.9rem;
-  /* Fixed width so "Generating…" and "Generate insights" render at the same
-     size — otherwise the label swap resizes the button on every click. */
-  min-width: 11rem;
-  min-height: 44px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #d8b4fe;
-  transition: background 0.15s, opacity 0.15s;
-  white-space: nowrap;
-  flex-shrink: 0;
-  box-sizing: border-box;
-}
-
-.generate-btn:hover:not(:disabled) { background: rgba(161,66,244,0.25); }
-.generate-btn:disabled              { opacity: 0.45; cursor: not-allowed; }
-.generate-btn.generating            { opacity: 0.7; }
-
-.gemini-star {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-}
-
-.gemini-star-sm {
-  width: 11px;
-  height: 11px;
-  flex-shrink: 0;
-}
-
-.gemini-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.68rem;
-  opacity: 0.45;
-}
-
-.generate-error {
-  font-size: 0.78rem;
-  color: #fca5a5;
-  margin: 0 0 0.75rem;
-}
-
-.ai-group {
-  margin-top: 0.75rem;
-}
-
-.ai-group + .ai-group {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255,255,255,0.06);
-}
-
-.ai-group-label {
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.35;
-  margin-bottom: 0.4rem;
-}
-
-.ai-empty-state {
-  font-size: 0.82rem;
-  opacity: 0.45;
-  text-align: center;
-  padding: 1.5rem 0;
-  margin: 0;
-}
-
-.pin-btn {
-  all: unset;
-  cursor: pointer;
-  width: 18px;
-  height: 18px;
-  opacity: 0.25;
-  transition: opacity 0.15s, color 0.15s;
-  color: #d8b4fe;
-  flex-shrink: 0;
-}
-
-.pin-btn svg { width: 100%; height: 100%; display: block; }
-.pin-btn:hover:not(:disabled) { opacity: 0.7; }
-.pin-btn-active               { opacity: 1 !important; }
-.pin-btn:disabled             { cursor: default; }
-
-.pin-limit-note {
-  font-size: 0.68rem;
-  opacity: 0.45;
-  margin: 0.5rem 0 0;
 }
 
 /* ── Responsive ── */

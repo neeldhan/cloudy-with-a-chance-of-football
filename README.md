@@ -45,7 +45,7 @@ This app is a tool for exploring that theory. It shows the full tournament — e
 
 On top of the climate angle, it's also a fully functional bracket predictor. You can fill in your knockout picks slot by slot, mark winners as you go, and watch live scores populate automatically as matches are played. Everything saves locally in your browser, so your predictions persist across sessions.
 
-There's also an **Insights** tab that turns the raw results into analysis: it crunches every finished group stage match to measure whether climate familiarity, altitude, and timezone travel actually correlated with results — and can generate fresh written observations about the data on demand using an AI model.
+There's also an **Insights** tab that turns the raw results into analysis: it crunches every finished group stage match to measure whether climate familiarity, altitude, and timezone travel actually correlated with results.
 
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
 
@@ -76,11 +76,7 @@ There's also an **Insights** tab that turns the raw results into analysis: it cr
 
 * **Computed headline stats** — the app tallies every finished group stage match to answer the questions the whole project is built around: what's the win rate for teams playing within 8°C of their home climate versus beyond it, how do goals-per-game change with venue altitude, and how much bigger is the average timezone gap for eliminated teams than for qualifiers
 * **Climate comfort chart** — a sorted bar for every team showing the average temperature gap between their training base and the venues they played in, coloured blue (close to home) to red (far out of comfort), with qualified teams highlighted
-* **"Core Findings" cards** — four always-visible findings (climate comfort, altitude, timezone fatigue, climate extremes) computed live from the same data — not AI-generated, and never stale; see [Computed Insights](#computed-insights-non-ai) for exactly how each one is derived
-* **AI-generated insights** — a "Generate insights" button that sends the computed statistics to a large language model (Llama 3.3 via Groq, though the model isn't named in the UI) and gets back four short, specific written observations about patterns in the data, each tagged (Resilient, Cautionary, Outlier, Pattern, Record, Surprising). At least half of every batch is required to be a genuine cross-team pattern (a shared region, climate band, altitude, or timezone bucket), not a single team's story
-* **Generate more, up to a limit** — each click appends 4 more insights rather than replacing what's there, for up to 3 rounds (12 total) per set of results. The button then disables with a note explaining why, until new match results make more rounds available
-* **Pin the good ones** — any generated insight can be pinned to keep it around; pinning moves the card into "Pinned" (not a copy), and unpinning moves it back. Pins are saved to `localStorage`
-* **Grounded, cached, and honest** — the model is told to only cite numbers that appear verbatim in the data and to never restate a fact already shown in the Core Findings cards. Each round is cached so repeat views are instant, and the UI carries a visible disclaimer: AI can make mistakes, correlation isn't causation, and it can be a little too eager connecting dots — give it a human read
+* **"Core Findings" cards** — four always-visible findings (climate comfort, altitude, timezone fatigue, climate extremes) computed live from the same data; see [Computed Insights](#computed-insights) for exactly how each one is derived
 
 ### Mobile
 
@@ -101,7 +97,6 @@ This app has two parts: the frontend (the website itself, built with Vue and hos
 * [Node.js](https://nodejs.org/) v22 or higher
 * npm (bundled with Node.js)
 * A free [football-data.org](https://www.football-data.org/) API key
-* A free [Groq](https://console.groq.com/keys) API key (for the AI insights feature)
 * A free [Cloudflare](https://cloudflare.com/) account (for the Worker backend)
 * [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) — Cloudflare's command-line deployment tool (`npm install -g wrangler`)
 
@@ -115,23 +110,12 @@ npm install
 
 ### Step 2 — Deploy the Cloudflare Worker
 
-The app uses a Cloudflare Worker as a secure middleman between the browser and two external APIs (football scores and the AI model). This keeps your API keys hidden from users — they live encrypted inside Cloudflare, never in any code file. Deploy it once and it runs indefinitely for free.
-
-First, create the KV namespace that caches AI insights, and paste the printed `id` into the `[[kv_namespaces]]` block in `wrangler.toml`:
+The app uses a Cloudflare Worker as a secure middleman between the browser and football-data.org. This keeps your API key hidden from users — it lives encrypted inside Cloudflare, never in any code file. Deploy it once and it runs indefinitely for free.
 
 ```bash
 wrangler login
-wrangler kv namespace create INSIGHTS
-# copy the printed id into wrangler.toml under [[kv_namespaces]]
-```
-
-Then store the two API keys as encrypted secrets and deploy:
-
-```bash
 wrangler secret put FOOTBALL_DATA_API_KEY
 # paste your football-data.org API key when prompted
-wrangler secret put GROQ_API_KEY
-# paste your Groq API key when prompted
 wrangler deploy
 ```
 
@@ -161,7 +145,7 @@ The app is now running at `http://localhost:5173`. Live scores will work immedia
 
 The app is a fully static Vue 3 single-page application — there is no traditional server. All match data, team climate information, and bracket structure is bundled at build time from local data files. The only runtime network calls are to Open-Meteo (weather) and to the Cloudflare Worker (scores), both made directly from the browser.
 
-The Cloudflare Worker is the one piece of server-side code in the project. It acts as a secure proxy for the two APIs that require authentication keys — football-data.org (scores) and Groq (AI insights) — neither of which can be safely called from browser-side JavaScript. The Worker holds both keys as encrypted secrets and forwards only the results to the browser. It also owns a small KV store used to cache generated insights (see [AI Insights Flow](#ai-insights-flow) below).
+The Cloudflare Worker is the one piece of server-side code in the project. It acts as a secure proxy for football-data.org, which requires an authentication key that can't be safely called from browser-side JavaScript. The Worker holds that key as an encrypted secret and forwards only the results to the browser.
 
 ### Tech Stack
 
@@ -171,11 +155,9 @@ The Cloudflare Worker is the one piece of server-side code in the project. It ac
 | Build tool | Vite 5 | Dev server and production bundler |
 | Styling | Global CSS (no scoped styles) | Shared classes across components |
 | Backend proxy | Cloudflare Workers | Secure API key proxy with edge caching |
-| Insights cache | Cloudflare Workers KV | Stores generated AI insights keyed by data hash |
 | Live weather | Open-Meteo API | No-auth match-day temperature fetches |
 | Live scores | football-data.org API v4 | Match results and live scores |
-| AI insights | Llama 3.3 70B via [Groq](https://groq.com/) | Written analysis of the computed statistics |
-| State persistence | `localStorage` | Slot assignments, winner states, pinned insights |
+| State persistence | `localStorage` | Slot assignments, winner states |
 | Hosting | GitHub Pages | Static site hosting via GitHub Actions |
 
 ### Component Tree
@@ -188,7 +170,7 @@ App.vue                        – tab navigation, score polling (60s interval)
 ├── ScheduleView.vue           – passes scores prop to groups
 │   └── GroupSection.vue       – group title and team list
 │       └── GroupMatch.vue     – score display, winner logic, live temp fetch
-└── InsightsView.vue           – computed stats, climate chart, AI insights + pinning
+└── InsightsView.vue           – computed stats, climate chart, Core Findings
 ```
 
 The computed statistics that drive the Insights tab live in [`src/utils/insights.js`](src/utils/insights.js) (`computeInsights`), which builds group standings and per-team climate/timezone aggregates from the live scores.
@@ -218,9 +200,9 @@ Each match card looks up its score by "home|away" key
 
 The 60-second edge cache means football-data.org receives at most one request per minute regardless of how many visitors are on the site simultaneously.
 
-### Computed Insights (Non-AI)
+### Computed Insights
 
-Everything on the Insights tab *except* the "Generate insights" button's output is plain JavaScript arithmetic over the live scores — no network call, no LLM, fully deterministic, and recomputed on every score refresh (every 60s, same cadence as live scores). This section documents exactly what's computed, since these numbers also form the "ground truth" the AI prompt is built from.
+Everything on the Insights tab is plain JavaScript arithmetic over the live scores — no network call, fully deterministic, and recomputed on every score refresh (every 60s, same cadence as live scores). This section documents exactly what's computed.
 
 **`computeInsights(scores)`** in [`src/utils/insights.js`](src/utils/insights.js) is the single source of truth for the tab. It walks every *finished* group stage match once and returns:
 
@@ -243,41 +225,6 @@ Everything on the Insights tab *except* the "Generate insights" button's output 
 2. **Altitude Suppresses Scoring** — `headlines.midAltGoals` (Guadalajara) vs. `seaLevelGoals`, mentioning `highAltGoals` (Mexico City) too.
 3. **Timezone Fatigue** — `headlines.tzQualifiedAvg` vs. `tzEliminatedAvg`, and the gap between them.
 4. **Climate Extremes** — deliberately *not* a fixed °C threshold. It takes the worst 25% of teams by climate gap (at least one team, so this card can never disappear even early in the tournament) and reports their point range. The closing sentence is adaptive: it says the pattern is "a striking tipping point" only if every team in that worst-quartile cohort scored ≤1 point, and otherwise honestly says results have been "more mixed than a clean tipping point would suggest." A fixed threshold risks going quiet (no team crosses it yet) or eventually asserting a clean pattern that stops being true — the floating cohort avoids both failure modes at the cost of a less catchy, non-fixed headline number.
-
-Before your first "Generate insights" click, the "Current" section is a plain empty state ("No insights here yet — generate some above"), not placeholder content. An earlier version showed four computed-but-not-AI cards there by default; that was removed because they were visually indistinguishable from real AI output in a section literally labelled "AI Insights" — more confusing than a simple prompt to click the button.
-
-### AI Insights Flow
-
-When you click "Generate insights", the frontend computes the statistics locally (`computeInsights`) and POSTs them to the Worker's `/analysis` endpoint, along with a `round` number. The Worker then does the slow, key-sensitive work that can't happen in the browser:
-
-```
-Browser → POST /analysis  (computed stats: teams, elevation tiers, headlines, round)
-        → Worker hashes the tournament data → KV cache key: promptVersion:hash:round
-        → round > MAX_ROUNDS (3)?  reject with a round_limit error
-        → cache HIT?  return the stored insights instantly (~0.1–0.5s)
-        → cache MISS? DRAFT:    build a prompt → call the AI provider (currently
-                                 Groq, Llama 3.3 70B) → parse 4 candidate insights
-                     → CRITIQUE: build a second prompt (the draft insights +
-                                 the full team data) → call the AI provider
-                                 again → it fixes, replaces, or passes through
-                                 each draft unchanged
-                     → store the critiqued result in KV (1-day TTL)
-                     → return the insights (~2–6s total for both calls)
-```
-
-Design choices worth calling out:
-
-- **Every generation is draft-then-critique, not a single call.** A single generation pass reliably produces two failure modes: calling two teams with opposite outcomes a "Pattern" (two examples is a coincidence, not a trend), and framing a team succeeding *because of* a small, favourable climate/timezone gap as "surprising" or "despite" — technically well-formed JSON, but logically backwards. The critique pass re-reviews every draft insight against the *full* team list (not just the teams the draft happened to cite) before anything is cached or shown. Both prompts are built by `buildPrompt()`/`buildCritiquePrompt()` in `workers/scores.js`, sharing a `buildContext()` helper so the two never disagree about what data or already-shown facts the model has to work with. If the critique call itself fails, the Worker falls back to the uncritiqued draft rather than discarding a perfectly good generation over a hiccup in the second call.
-- **Each click is a new "round", not a re-roll of the same cache slot.** The cache key includes an explicit round number (1, 2, 3, ...) that the frontend increments on every successful generation, so clicking "Generate" again returns a *different* batch instead of the same cached array forever — while still being an instant cache hit for every other visitor who reaches that same round for the same data. The frontend appends each round's 4 insights to what's already showing (up to `MAX_AI_ROUNDS = 3`, i.e. 12 total), then disables the button with an explanatory note. `MAX_ROUNDS` in the Worker and `MAX_AI_ROUNDS` in `InsightsView.vue` must be kept in sync manually — they're on opposite sides of a network boundary so can't share a constant.
-- **A `PROMPT_VERSION` tag is folded into the cache key.** Without it, editing either prompt (wording, instructions, schema) would be silently masked by old cached insights until the underlying scores data happened to change — every visitor would keep getting the pre-edit output. Bump it whenever `buildPrompt()` or `buildCritiquePrompt()` changes meaningfully.
-- **Both prompts explicitly rule out restating the Core Findings** — not just the three-way comparisons as a whole, but each individual figure within them, since a model will happily cite just one side of a comparison (e.g. the sea-level goals/game number alone) and not recognise it as the same already-shown fact.
-- **At least 2 of the 4 insights per round must span multiple teams** — a shared region, climate band, altitude, or timezone bucket — with at most 1 single-team "spotlight" story, and any insight claiming a "Pattern" needs at least 3 *consistent* supporting teams, not 2 (two examples that disagree with each other is evidence against a pattern, not for one). This pushes the model toward the kind of cross-cutting pattern a person skimming a spreadsheet would likely miss, rather than four separate "here's one country's story" cards. The schema also explicitly forbids placeholder team labels like "None" or "Various" for these grouped insights, requiring a short descriptive label instead (e.g. "South American Teams").
-- **Provider config is isolated to two constants** (`AI_API_URL`, `AI_MODEL` in `workers/scores.js`) and a provider-agnostic function name (`callAIForInsights`), so a future provider swap is a small, contained change rather than a search-and-replace across the file.
-- **The model is asked for structured JSON** (`response_format: json_object`) so the four returned insights are reliably parseable.
-
-The Worker caps each AI call with a timeout and returns a retryable error on failure; the frontend silently retries a couple of times before surfacing an error, so a cold generation almost always succeeds without the user noticing.
-
-If the underlying tournament data actually changes (new match results, detected by comparing a snapshot of the stats against the last-seen one — not just any 60-second re-poll with identical content), the frontend clears `currentInsights` and resets the round counter to 0, since old AI insights may now cite stale numbers and a fresh round of generation becomes available.
 
 ### Match ID Scheme
 
@@ -336,9 +283,7 @@ The match card also shows the host city's average July temperature, and for rece
 
 ### Exploring the Insights Tab
 
-Switch to the **Insights** tab. At the top are headline figures computed from every finished group stage match — the climate-comfort win rate, goals-per-game by altitude, and the timezone-travel gap between qualifiers and eliminated teams — followed by a per-team climate comfort chart you can sort by team, temperature gap, or points.
-
-Below that, press **Generate insights** to have an AI model read the computed statistics and write four short observations about patterns in the data — most of which should span multiple teams (a region, climate band, or timezone bucket) rather than narrate a single team's story. Each click gets a couple of seconds (cached and instant on repeat) and appends 4 more, up to 3 rounds (12 total) for the current results; after that the button explains it's out until new matches finish. Pin any insight you want to keep — pinning moves it into "Pinned" rather than copying it, and unpinning moves it back. As always with AI, treat the findings as a starting point: verify anything surprising against the numbers shown above.
+Switch to the **Insights** tab. At the top are headline figures computed from every finished group stage match — the climate-comfort win rate, goals-per-game by altitude, and the timezone-travel gap between qualifiers and eliminated teams — followed by a per-team climate comfort chart you can sort by team, temperature gap, or points. Below that, the "Core Findings" cards surface the same headline patterns as short written summaries.
 
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
 
@@ -371,11 +316,10 @@ To revert to the plain GitHub Pages URL, delete `public/CNAME` and set `base` ba
 
 ### Rotating the API Keys
 
-Both `FOOTBALL_DATA_API_KEY` and `GROQ_API_KEY` are stored as encrypted Cloudflare secrets and are never in any file or environment variable. To update either one, re-run the corresponding command and paste the new key:
+`FOOTBALL_DATA_API_KEY` is stored as an encrypted Cloudflare secret and is never in any file or environment variable. To update it, re-run the command and paste the new key:
 
 ```bash
 wrangler secret put FOOTBALL_DATA_API_KEY
-wrangler secret put GROQ_API_KEY
 ```
 
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
@@ -389,15 +333,6 @@ wrangler secret put GROQ_API_KEY
 * **Knockout bracket is manual** — bracket slots must be filled in by hand once group stage results are known. There is no automatic propagation of group standings into the knockout draw
 * **football-data.org free tier** — the free tier has rate limits. The 60-second edge cache in the Worker ensures these are not hit under normal traffic, but very high traffic spikes could theoretically exhaust the per-minute limit
 * **No server-side rendering** — this is a fully client-side static app; initial page load fetches everything from flat data files and the Worker
-* **AI insights can be wrong** — the generated observations come from a language model. It's instructed to cite only numbers present in the data and to favour cross-team patterns over single-team narration, but it can still misread a trend, overstate a correlation, or connect dots too eagerly — the UI carries a disclaimer to that effect. Treat the AI section as a starting point, not authority. Each round is also only as current as its cached result for that set of match data (cached for up to a day, or until the results actually change)
-* **Groq free-tier limits** — the AI feature runs on Groq's free tier, which has per-minute rate limits. Each generation is two sequential calls (draft + critique — see [AI Insights Flow](#ai-insights-flow)), so it uses roughly double the tokens a single-pass design would. The KV cache means any given round (1, 2, or 3) for a given set of results is only ever generated once — subsequent requests for that same round are instant cache hits — so normal use stays well within limits, but generating several never-before-seen rounds back-to-back can hit the per-minute cap and return a retryable error
-
-### Why Groq (and not OpenRouter or Gemini)?
-
-The AI insights feature went through a few backends before landing on Groq, and the reasoning is worth recording:
-
-* **OpenRouter's free tier doesn't work from Cloudflare Workers.** The exact same request completes in ~10 seconds from a normal machine but consistently fails to return within 30–55 seconds when made from the Worker. OpenRouter's free tier appears to throttle traffic from Cloudflare's shared egress IPs heavily enough that requests effectively never complete. Its random free-model router also sometimes selected the wrong kind of model entirely (e.g. a content-safety classifier) or a slow reasoning model. Groq, on separate infrastructure, returns in ~2–3 seconds from the same Worker.
-* **Google Gemini was not actually the problem.** An earlier version of this feature targeted Gemini and hit a wall, but that turned out to be a red herring: the app was calling a *stale, dead Worker endpoint* the whole time (a leftover `VITE_SCORES_URL` in a local `.env.local` that overrode the real one), so nothing was reaching the intended backend regardless of provider. Gemini's `generateContent` API had in fact worked fine from the Worker. We note this only so the history is clear — no claim is made that Gemini is better or worse than the current setup.
 
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
 
@@ -427,8 +362,6 @@ If you discover a team name mismatch (a match with a known score that isn't appe
 * [football-data.org API v4 documentation](https://www.football-data.org/documentation/quickstart)
 * [Open-Meteo API documentation](https://open-meteo.com/en/docs)
 * [Cloudflare Workers documentation](https://developers.cloudflare.com/workers/)
-* [Cloudflare Workers KV documentation](https://developers.cloudflare.com/kv/)
-* [Groq API documentation](https://console.groq.com/docs)
 * [Vite environment variables](https://vitejs.dev/guide/env-and-mode)
 * [Vue 3 Options API](https://vuejs.org/guide/introduction.html)
 * [GitHub Pages custom domains](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site)
@@ -442,10 +375,9 @@ If you discover a team name mismatch (a match with a known score that isn't appe
 * **football-data.org** for providing a free tier API with comprehensive World Cup data
 * **Open-Meteo** for a genuinely free, no-auth-required weather API
 * **Cloudflare** for making serverless edge computing accessible and free at this scale
-* **Groq** for genuinely fast, free LLM inference that makes the AI insights feature feel instant
 
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
 
 ---
 
-**Last Updated: 7 July 2026**
+**Last Updated: 10 July 2026**

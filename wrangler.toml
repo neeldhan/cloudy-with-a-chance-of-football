@@ -2,12 +2,6 @@ name            = "wc26-scores"
 main            = "workers/scores.js"
 compatibility_date = "2025-06-01"
 
-# FOOTBALL_DATA_API_KEY and GROQ_API_KEY are NOT stored here.
-# Set them once with:  wrangler secret put FOOTBALL_DATA_API_KEY
-#                      wrangler secret put GROQ_API_KEY
+# FOOTBALL_DATA_API_KEY is NOT stored here.
+# Set it once with:  wrangler secret put FOOTBALL_DATA_API_KEY
 # Then paste your key when prompted. Cloudflare encrypts it.
-
-# KV cache for pre-generated AI insights.
-[[kv_namespaces]]
-binding = "INSIGHTS"
-id      = "7a218990161b494a8c61588ca96ee0d1"
