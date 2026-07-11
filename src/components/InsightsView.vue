@@ -35,6 +35,23 @@
         </div>
       </div>
 
+      <!-- ── Capacities export ──────────────────── -->
+      <div class="page-export-row">
+        <div class="export-help">
+          <span class="export-help-trigger" tabindex="0">What's this?</span>
+          <div class="export-help-tooltip">
+            Exports every computed stat on this tab (Core Findings, elevation tiers, and each team's climate and timezone gap) as Capacities-ready markdown. Each item comes out as its own YAML frontmatter block, matching how Capacities' importer maps named properties onto a typed object. Copy to clipboard or download as a .md file, then import it into Capacities. Re-export any time to pull in updated results.
+          </div>
+        </div>
+        <div class="export-menu">
+          <button class="export-btn" @click.stop="toggleExportMenu('capacities')"><img :src="capacitiesIcon" class="capacities-icon" alt="" /> {{ capacitiesCopied ? 'Copied!' : 'Export to Capacities' }} <span class="export-caret">▾</span></button>
+          <div v-if="openExportMenu === 'capacities'" class="export-dropdown">
+            <button class="export-option" @click="copyCapacitiesExport">Copy to clipboard</button>
+            <button class="export-option" @click="downloadCapacitiesExport">Download .md file</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ── Climate Comfort ────────────────────── -->
       <section class="ins-section">
         <div class="sec-eyebrow">Climate Comfort</div>
@@ -222,9 +239,11 @@
 </template>
 
 <script>
-import html2canvas         from 'html2canvas'
-import { computeInsights } from '../utils/insights.js'
-import { tempToColor }     from '../utils/temperature.js'
+import html2canvas             from 'html2canvas'
+import { computeInsights }     from '../utils/insights.js'
+import { tempToColor }         from '../utils/temperature.js'
+import { buildCapacitiesMarkdown } from '../utils/capacitiesExport.js'
+import CAPACITIES_ICON_SRC     from '../assets/capacities-icon-white.png'
 
 // Opaque fallback for JPEG exports, which can't have a transparent
 // background — matches the .ins-section card background (rgba(5,20,10,0.96))
@@ -262,11 +281,16 @@ export default {
       // rather than letting a second click overlap the first.
       exportingChart: null,
 
-      // Ref name of whichever chart's "Export ▾" dropdown is currently open
-      // (only one at a time), or null if none are. Closed by picking a
-      // format, or by clicking anywhere outside it — see
-      // handleDocumentClick() below.
+      // Name of whichever export dropdown is currently open — one of
+      // 'climateChart' | 'elevChart' | 'tzChart' | 'capacities', or null if
+      // none are (only one open at a time). Closed by picking an option, or
+      // by clicking anywhere outside it — see handleDocumentClick() below.
       openExportMenu: null,
+
+      // Briefly true right after "Copy to clipboard" succeeds, so the
+      // Capacities export button can flash "Copied!" instead of relying on
+      // a separate toast/notification system this app doesn't have.
+      capacitiesCopied: false,
     }
   },
 
@@ -292,6 +316,13 @@ export default {
     // that it's live/refreshing.
     asOfDate() {
       return new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    },
+
+    // Exposes the imported icon asset URL to the template — a plain
+    // module-level import isn't reachable from Options API templates on its
+    // own, only things returned from data/computed/methods are.
+    capacitiesIcon() {
+      return CAPACITIES_ICON_SRC
     },
 
     // Climate comfort table rows, re-sorted whenever the sort column/direction
@@ -496,6 +527,32 @@ export default {
         this.exportingChart = null
       }
     },
+
+    // Copies the full Capacities export (Core Findings + elevation tiers +
+    // every team's climate/timezone rows, one YAML frontmatter block each —
+    // see buildCapacitiesMarkdown()) to the clipboard as plain markdown.
+    async copyCapacitiesExport() {
+      this.openExportMenu = null
+      const text = buildCapacitiesMarkdown(this.insights, this.permanentInsights())
+      await navigator.clipboard.writeText(text)
+      // Flash "Copied!" on the button in place of a toast notification,
+      // since the app doesn't have one.
+      this.capacitiesCopied = true
+      setTimeout(() => { this.capacitiesCopied = false }, 1500)
+    },
+
+    // Same export, downloaded as a standalone .md file instead of copied.
+    downloadCapacitiesExport() {
+      this.openExportMenu = null
+      const text = buildCapacitiesMarkdown(this.insights, this.permanentInsights())
+      const blob = new Blob([text], { type: 'text/markdown' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `wc26-capacities-export-${new Date().toISOString().slice(0, 10)}.md`
+      link.click()
+      URL.revokeObjectURL(url)
+    },
   },
 }
 </script>
@@ -618,6 +675,64 @@ export default {
   margin-top: 1.1rem;
 }
 
+.page-export-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin: 0 0 0.75rem;
+}
+
+.export-help {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.export-help-trigger {
+  font-size: 0.72rem;
+  opacity: 0.45;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  transition: opacity 0.15s;
+}
+
+.export-help-trigger:hover,
+.export-help-trigger:focus {
+  opacity: 0.85;
+  outline: none;
+}
+
+.export-help-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  max-width: calc(100vw - 2rem);
+  background: #0a1f12;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.45);
+  padding: 0.65rem 0.8rem;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.75);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+  z-index: 25;
+  pointer-events: none;
+}
+
+.export-help-trigger:hover + .export-help-tooltip,
+.export-help-trigger:focus + .export-help-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
 .export-menu {
   position: relative;
 }
@@ -627,11 +742,11 @@ export default {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
-  font-size: 0.65rem;
+  gap: 0.25rem;
+  font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.03em;
-  padding: 0.25rem 0.6rem;
+  padding: 0.4rem 0.85rem;
   border-radius: 999px;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.12);
@@ -644,11 +759,18 @@ export default {
 
 .export-caret { font-size: 0.6rem; opacity: 0.7; }
 
+.capacities-icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  opacity: 0.85;
+}
+
 .export-dropdown {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  min-width: 140px;
+  min-width: 165px;
   background: #0a1f12;
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 8px;
@@ -663,8 +785,8 @@ export default {
   display: block;
   width: 100%;
   cursor: pointer;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.72rem;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.8rem;
   color: rgba(255,255,255,0.75);
 }
 
