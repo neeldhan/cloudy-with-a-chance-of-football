@@ -64,11 +64,11 @@ There's also an **Insights** tab that turns the raw results into analysis: it cr
 
 * **Training climate temperatures** displayed on every team as a colour-coded pill, using a blue → red gradient (cold → hot climate)
 * **Host city average July temperatures** shown on every match card
-* **Real-time match-day weather** — for matches played yesterday, today, or tomorrow, the actual forecast temperature for the host city is fetched live from Open-Meteo and displayed alongside the historical average
+* **Real-time match-day weather** — for any match on or before tomorrow (that includes every match already played, not just yesterday's), the actual forecast/historical temperature for the host city is fetched live from Open-Meteo and displayed alongside the historical average
 
 ### Bracket Editing
 
-* **Auto-populated results** — as group and knockout matches are decided, winners automatically advance into the next round's bracket slots, including resolving the "best 3rd place" qualifier slots once football-data.org publishes the real Round of 32 fixture
+* **Auto-populated results** — as group and knockout matches are decided, winners automatically advance into the next round's bracket slots, including resolving the "best 3rd place" qualifier slots once the real Round of 32 match actually kicks off
 * **Slot assignment** — right-click any bracket slot on desktop (or long-press on mobile) to manually assign a team to it, for anything not yet decided by a real result
 * **Manual winner toggle** — click or tap any team to highlight them as the winner of that match, for matches without an official API score
 * **Persistent state** — manual slot assignments and winner highlights are saved to `localStorage` and survive page refreshes; any that get superseded by a real result are automatically overridden
@@ -100,7 +100,7 @@ This app has two parts: the frontend (the website itself, built with Vue and hos
 
 ### Prerequisites
 
-* [Node.js](https://nodejs.org/) v22 or higher
+* [Node.js](https://nodejs.org/) v20 or higher (matches the version the GitHub Actions build uses)
 * npm (bundled with Node.js)
 * A free [football-data.org](https://www.football-data.org/) API key
 * A free [Cloudflare](https://cloudflare.com/) account (for the Worker backend)
@@ -218,7 +218,7 @@ The 60-second edge cache means football-data.org receives at most one request pe
 
 Once football-data.org shows a real match result, the bracket doesn't need a manual entry for what happens next. `deriveAssignments(scores)` in [`src/utils/bracketProgression.js`](src/utils/bracketProgression.js) computes each group's full standings, fills in the 1st/2nd-place qualifier slots, then chains winners and losers forward through every knockout round in order.
 
-The one case this can't compute from group standings alone is the 8 "best 3rd place" Round of 32 slots (labelled like `3A/B/C/D/F`) — which specific 3rd-place team advances depends on FIFA's own cross-group tiebreak ranking (using data like fair play points that isn't available here). Rather than reimplementing that ranking, `resolveThirdPlaceSlot()` waits for football-data.org to publish the real Round of 32 fixture and reads the answer off it directly: once a slot's opponent is known, it checks which of the candidate 3rd-place teams has a recorded match against them at the `LAST_32` stage specifically (not just any later meeting between the same two teams, which could be a rematch).
+The one case this can't compute from group standings alone is the 8 "best 3rd place" Round of 32 slots (labelled like `3A/B/C/D/F`) — which specific 3rd-place team advances depends on FIFA's own cross-group tiebreak ranking (using data like fair play points that isn't available here). Rather than reimplementing that ranking, `resolveThirdPlaceSlot()` reads the answer off the real Round of 32 fixture directly: once a slot's opponent is known, it checks which of the candidate 3rd-place teams has a recorded match against them at the `LAST_32` stage specifically (not just any later meeting between the same two teams, which could be a rematch). That check can only succeed once the match actually appears in the scores map, though — `handleScores()` in [`workers/scores.js`](workers/scores.js) only includes matches that are currently live or already finished (see the `LIVE`/`DONE` status sets), so a fixture that's merely been scheduled with both teams assigned isn't enough; the slot stays unresolved until that specific match kicks off.
 
 Auto-derived assignments always take precedence over a manual slot assignment for the same slot (see `mergedAssignments` in [`BracketView.vue`](src/components/BracketView.vue)) — manual assignments exist to predict a slot ahead of the real result, not to override it once the real result is in.
 
@@ -276,11 +276,13 @@ football-data.org uses different name variants for some countries than this app 
 | Côte d'Ivoire | Ivory Coast |
 | Türkiye / Turkey | Turkiye |
 | IR Iran | Iran |
-| Korea Republic | South Korea |
-| Congo DR / Democratic Republic of Congo | DR Congo |
-| Cabo Verde | Cape Verde |
+| United States of America / USA | United States |
+| Democratic Republic of Congo / Congo DR | DR Congo |
+| Korea Republic / Republic of Korea | South Korea |
 | Czech Republic | Czechia |
 | Curaçao | Curacao |
+| Cabo Verde / Cape Verde Islands | Cape Verde |
+| Bosnia-Herzegovina | Bosnia and Herzegovina |
 
 </details>
 
@@ -296,7 +298,7 @@ Switch to the **Group Stage Schedule** tab. All 72 matches are organised by grou
 
 ### Filling in the Knockout Bracket
 
-Switch to the **Knockout Bracket** tab. As group and knockout matches are decided, slots fill in automatically with the real results — including the "best 3rd place" qualifier slots, once football-data.org confirms the actual Round of 32 pairing. Anything not yet decided shows a placeholder label ("Winner of Group A", "Runner-up, Group B", etc.) until you assign a prediction or the real result comes in, whichever happens first.
+Switch to the **Knockout Bracket** tab. As group and knockout matches are decided, slots fill in automatically with the real results — including the "best 3rd place" qualifier slots, once the actual Round of 32 match kicks off. Anything not yet decided shows a placeholder label ("Winner of Group A", "Runner-up, Group B", etc.) until you assign a prediction or the real result comes in, whichever happens first.
 
 **To assign a team to a slot:**
 - **Desktop:** Right-click the slot → type or select a team from the dropdown → Save
@@ -373,7 +375,7 @@ wrangler secret put FOOTBALL_DATA_API_KEY
 
 * **localStorage only** — slot assignments and winner states are stored in the visitor's own browser. They are not synced across devices or shared between users
 * **Team name normalisation** — if a team name in the API response doesn't match any known variant in the Worker's normalisation map, its score won't appear on the app. These are easy to fix by adding entries to `NAME_MAP` in [`workers/scores.js`](workers/scores.js)
-* **"Best 3rd place" slots wait on the real fixture** — the 8 qualifying 3rd-place knockout slots can't be computed from group standings alone (FIFA's cross-group tiebreak needs data this app doesn't have), so those specific slots only auto-fill once football-data.org publishes the actual Round of 32 match; until then they can be filled in manually like any other undecided slot, same as the rest of the bracket
+* **"Best 3rd place" slots wait on kickoff, not just the fixture** — the 8 qualifying 3rd-place knockout slots can't be computed from group standings alone (FIFA's cross-group tiebreak needs data this app doesn't have), so those specific slots read the answer off the real Round of 32 match instead. The Worker's scores endpoint only ever returns matches that are live or finished, so a fixture that's merely been scheduled with both teams assigned isn't enough — the slot stays unresolved until that match actually kicks off. Until then, it can be filled in manually like any other undecided slot, same as the rest of the bracket
 * **football-data.org free tier** — the free tier has rate limits. The 60-second edge cache in the Worker ensures these are not hit under normal traffic, but very high traffic spikes could theoretically exhaust the per-minute limit
 * **No server-side rendering** — this is a fully client-side static app; initial page load fetches everything from flat data files and the Worker
 
