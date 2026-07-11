@@ -51,7 +51,7 @@
           <span class="cm-pill cm-discomfort">Uncomfortable (≥{{ insights.comfortThreshold }}°C gap) · {{ insights.headlines.discomfortWinPct.toFixed(0) }}% win rate</span>
         </div>
 
-        <div class="climate-chart">
+        <div class="climate-chart" ref="climateChart">
           <div class="cc-colheads">
             <button class="col-sort-btn" :class="{ 'col-active': climateSort.key === 'name' }" @click="setSort(climateSort, 'name')">Team <span class="sort-icon">{{ sortIcon(climateSort, 'name') }}</span></button>
             <button class="col-sort-btn" :class="{ 'col-active': climateSort.key === 'avgDelta' }" @click="setSort(climateSort, 'avgDelta')">Avg temperature gap <span class="sort-icon">{{ sortIcon(climateSort, 'avgDelta') }}</span></button>
@@ -69,6 +69,16 @@
             </div>
             <div class="cc-pts" :class="ptsClass(team.P)">{{ team.P }}</div>
           </div>
+          <p class="chart-asof">As of {{ asOfDate }}.</p>
+        </div>
+        <div class="chart-export-row">
+          <div class="export-menu">
+            <button class="export-btn" :disabled="exportingChart === 'climateChart'" @click.stop="toggleExportMenu('climateChart')">Export <span class="export-caret">▾</span></button>
+            <div v-if="openExportMenu === 'climateChart'" class="export-dropdown">
+              <button class="export-option" @click="doExport('climateChart', 'wc26-climate-comfort', 'png')">Export as PNG</button>
+              <button class="export-option" @click="doExport('climateChart', 'wc26-climate-comfort', 'jpeg')">Export as JPG</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -83,11 +93,12 @@
           the highest World Cup venue in history.
         </p>
 
-        <div class="elev-chart">
+        <div class="elev-chart" ref="elevChart">
+          <p class="elev-chart-title">Goals per game by elevation tier</p>
           <div class="elev-bars">
             <div v-for="tier in insights.elevTiers" :key="tier.label" class="elev-col">
               <div class="elev-bar-wrap">
-                <div class="elev-gpg">{{ tier.goalsPerGame.toFixed(2) }}</div>
+                <div class="elev-gpg">{{ tier.goalsPerGame.toFixed(2) }} <span class="elev-gpg-unit">gpg</span></div>
                 <div class="elev-bar-track">
                   <div
                     class="elev-bar"
@@ -98,6 +109,16 @@
               <div class="elev-tier-name">{{ tier.label }}</div>
               <div class="elev-range">{{ tier.range }}</div>
               <div class="elev-games">{{ tier.games }} matches</div>
+            </div>
+          </div>
+          <p class="chart-asof">As of {{ asOfDate }}.</p>
+        </div>
+        <div class="chart-export-row">
+          <div class="export-menu">
+            <button class="export-btn" :disabled="exportingChart === 'elevChart'" @click.stop="toggleExportMenu('elevChart')">Export <span class="export-caret">▾</span></button>
+            <div v-if="openExportMenu === 'elevChart'" class="export-dropdown">
+              <button class="export-option" @click="doExport('elevChart', 'wc26-altitude-factor', 'png')">Export as PNG</button>
+              <button class="export-option" @click="doExport('elevChart', 'wc26-altitude-factor', 'jpeg')">Export as JPG</button>
             </div>
           </div>
         </div>
@@ -149,7 +170,7 @@
           </div>
         </div>
 
-        <div class="tz-chart">
+        <div class="tz-chart" ref="tzChart">
           <div class="tz-colheads">
             <button class="col-sort-btn" :class="{ 'col-active': tzSort.key === 'name' }" @click="setSort(tzSort, 'name')">Team <span class="sort-icon">{{ sortIcon(tzSort, 'name') }}</span></button>
             <button class="col-sort-btn" :class="{ 'col-active': tzSort.key === 'avgTzDiff' }" @click="setSort(tzSort, 'avgTzDiff')">Avg timezone gap <span class="sort-icon">{{ sortIcon(tzSort, 'avgTzDiff') }}</span></button>
@@ -169,6 +190,16 @@
             <div class="tz-pts" :class="ptsClass(team.P)">{{ team.P }}</div>
           </div>
           <p class="tz-note">Qualified teams in <span style="color:#86efac">green</span>.</p>
+          <p class="chart-asof">As of {{ asOfDate }}.</p>
+        </div>
+        <div class="chart-export-row">
+          <div class="export-menu">
+            <button class="export-btn" :disabled="exportingChart === 'tzChart'" @click.stop="toggleExportMenu('tzChart')">Export <span class="export-caret">▾</span></button>
+            <div v-if="openExportMenu === 'tzChart'" class="export-dropdown">
+              <button class="export-option" @click="doExport('tzChart', 'wc26-timezone-fatigue', 'png')">Export as PNG</button>
+              <button class="export-option" @click="doExport('tzChart', 'wc26-timezone-fatigue', 'jpeg')">Export as JPG</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -191,8 +222,21 @@
 </template>
 
 <script>
+import html2canvas         from 'html2canvas'
 import { computeInsights } from '../utils/insights.js'
 import { tempToColor }     from '../utils/temperature.js'
+
+// Opaque fallback for JPEG exports, which can't have a transparent
+// background — matches the .ins-section card background (rgba(5,20,10,0.96))
+// flattened to a solid color, so an exported JPEG looks like the on-screen
+// card instead of picking an arbitrary unrelated color.
+const EXPORT_JPEG_BG = '#05140a'
+
+// Fixed multiplier applied on top of the chart's on-screen pixel size, so
+// exports hold up outside a browser window (e.g. printed) instead of being
+// capped at whatever resolution the chart happens to render at on the
+// visitor's own device.
+const EXPORT_SCALE = 3
 
 // PERMANENT_INSIGHTS used to be hardcoded here. It's now computed live from
 // `insights` — see the permanentInsights() method below — so its numbers
@@ -212,7 +256,26 @@ export default {
       // sorted by. Read/written by applySort()/setSort() below.
       climateSort: { key: 'avgDelta', asc: true },
       tzSort:      { key: 'avgTzDiff', asc: true },
+
+      // Ref name ('climateChart' | 'elevChart' | 'tzChart') of whichever
+      // chart is mid-export, so that chart's export button disables itself
+      // rather than letting a second click overlap the first.
+      exportingChart: null,
+
+      // Ref name of whichever chart's "Export ▾" dropdown is currently open
+      // (only one at a time), or null if none are. Closed by picking a
+      // format, or by clicking anywhere outside it — see
+      // handleDocumentClick() below.
+      openExportMenu: null,
     }
+  },
+
+  mounted() {
+    document.addEventListener('click', this.handleDocumentClick)
+  },
+
+  beforeUnmount() {
+    document.removeEventListener('click', this.handleDocumentClick)
   },
 
   computed: {
@@ -221,6 +284,14 @@ export default {
     // for what this actually contains. null until the first finished match.
     insights() {
       return computeInsights(this.scores)
+    },
+
+    // "As of" date baked into every exported chart image, so a chart that
+    // gets shared or printed still says when the numbers were current —
+    // unlike the on-screen version, an exported PNG/JPG has no way to show
+    // that it's live/refreshing.
+    asOfDate() {
+      return new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
     },
 
     // Climate comfort table rows, re-sorted whenever the sort column/direction
@@ -369,6 +440,62 @@ export default {
 
       return findings
     },
+
+    // Opens/closes a chart's "Export ▾" dropdown. Only one menu is ever open
+    // at a time — opening a second closes whichever was already open.
+    toggleExportMenu(refName) {
+      this.openExportMenu = this.openExportMenu === refName ? null : refName
+    },
+
+    // Any click outside an open export dropdown closes it — the dropdown
+    // itself lives inside .export-menu, so anything else is "outside".
+    // Registered on `document` (see mounted()/beforeUnmount()) rather than
+    // relying on blur, since blur fires before the option's own click
+    // handler would get a chance to run.
+    handleDocumentClick(e) {
+      if (this.openExportMenu && !e.target.closest('.export-menu')) {
+        this.openExportMenu = null
+      }
+    },
+
+    // Closes the dropdown, then hands off to exportChart() — the small
+    // wrapper the two "Export as PNG/JPG" menu options actually call.
+    doExport(refName, filenameBase, format) {
+      this.openExportMenu = null
+      this.exportChart(refName, filenameBase, format)
+    },
+
+    // Rasterizes one chart (referenced by ref name, e.g. 'climateChart')
+    // and downloads it as a standalone image file. Reached via the Export
+    // dropdown under each of the three charts (Climate Comfort, Altitude
+    // Factor, Timezone Fatigue) — the Core Findings cards and hero stats
+    // are plain text/numbers and don't need this.
+    async exportChart(refName, filenameBase, format) {
+      const el = this.$refs[refName]
+      if (!el || this.exportingChart) return
+
+      this.exportingChart = refName
+      try {
+        const isJpeg = format === 'jpeg'
+        const canvas = await html2canvas(el, {
+          scale: EXPORT_SCALE,
+          // PNG keeps real transparency (no background painted at all);
+          // JPEG can't represent transparency, so it gets an explicit
+          // opaque background matching the card behind it on-screen.
+          backgroundColor: isJpeg ? EXPORT_JPEG_BG : null,
+        })
+
+        const mime = isJpeg ? 'image/jpeg' : 'image/png'
+        const dataUrl = canvas.toDataURL(mime, isJpeg ? 0.95 : undefined)
+
+        const link = document.createElement('a')
+        link.href = dataUrl
+        link.download = `${filenameBase}.${isJpeg ? 'jpg' : 'png'}`
+        link.click()
+      } finally {
+        this.exportingChart = null
+      }
+    },
   },
 }
 </script>
@@ -462,6 +589,86 @@ export default {
   margin-top: 0.5rem;
   font-weight: 500;
 }
+
+/* ── Chart image export ── */
+.chart-asof {
+  font-size: 0.65rem;
+  opacity: 0.35;
+  margin: 0.5rem 0 0;
+}
+
+.elev-chart-title {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.4;
+  margin: 0 0 0.6rem;
+}
+
+.elev-gpg-unit {
+  font-size: 0.62rem;
+  font-weight: 500;
+  opacity: 0.5;
+}
+
+.chart-export-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.1rem;
+}
+
+.export-menu {
+  position: relative;
+}
+
+.export-btn {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.6);
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.export-btn:hover:not(:disabled) { background: rgba(255,255,255,0.12); color: #f9fafb; }
+.export-btn:disabled              { opacity: 0.4; cursor: default; }
+
+.export-caret { font-size: 0.6rem; opacity: 0.7; }
+
+.export-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 140px;
+  background: #0a1f12;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.45);
+  overflow: hidden;
+  z-index: 20;
+}
+
+.export-option {
+  all: unset;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.75);
+}
+
+.export-option:hover { background: rgba(255,255,255,0.08); color: #f9fafb; }
 
 /* ── Section card ── */
 .ins-section {
