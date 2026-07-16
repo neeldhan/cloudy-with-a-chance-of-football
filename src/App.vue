@@ -1,8 +1,8 @@
 <template>
   <h1>World Cup 2026 Heat Bracket</h1>
   <p class="subtitle">
-    Tap any team to toggle winner highlight &nbsp;·&nbsp;
-    Right-click or long-press a bracket slot to assign a team
+    Are factors like heat and elevation making teams under- or over-perform at the World Cup?
+    Let's see what the data shows us.
   </p>
 
   <nav class="main-nav">
