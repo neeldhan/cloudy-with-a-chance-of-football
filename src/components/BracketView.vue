@@ -9,6 +9,9 @@
         :match="match"
         :assignments="assignments"
         :scores="scores"
+        :show-elevation="showElevation"
+        :show-timezone="showTimezone"
+        :show-pot="showPot"
       />
     </section>
   </div>
@@ -23,7 +26,10 @@ export default {
   components: { KnockoutMatch },
 
   props: {
-    scores: { type: Object, default: () => ({}) },
+    scores:        { type: Object,  default: () => ({}) },
+    showElevation: { type: Boolean, default: true },
+    showTimezone:  { type: Boolean, default: true },
+    showPot:       { type: Boolean, default: true },
   },
 
   data() {

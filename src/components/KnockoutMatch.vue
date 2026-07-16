@@ -18,14 +18,14 @@
           class="team-slot"
           :class="slotClass(match.home, showHomeWinner)"
           :style="slotStyle(match.home)"
-        >{{ slotText(match.home) }}</span>
+        ><span v-if="potFor(match.home)" class="pot-badge">P{{ potFor(match.home) }}</span>{{ slotText(match.home) }}</span>
       </div>
       <div class="team">
         <span
           class="team-slot"
           :class="slotClass(match.away, showAwayWinner)"
           :style="slotStyle(match.away)"
-        >{{ slotText(match.away) }}</span>
+        ><span v-if="potFor(match.away)" class="pot-badge">P{{ potFor(match.away) }}</span>{{ slotText(match.away) }}</span>
       </div>
     </div>
 
@@ -41,12 +41,16 @@
 import { TRAINING_CLIMATE, HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS, HOST_CITY_ELEVATION, HOST_CITY_TIMEZONE, TEAM_TIMEZONE } from '../data/climate.js'
 import { tempToColor, isPastDate, tzDiffHours } from '../utils/temperature.js'
 import { shouldFetchLiveTemp, fetchLiveTemp } from '../utils/openMeteo.js'
+import { teamPot } from '../data/seeding.js'
 
 export default {
   props: {
-    match:       { type: Object, required: true },
-    assignments: { type: Object, required: true },
-    scores:      { type: Object, default: () => ({}) },
+    match:         { type: Object,  required: true },
+    assignments:   { type: Object,  required: true },
+    scores:        { type: Object,  default: () => ({}) },
+    showElevation: { type: Boolean, default: true },
+    showTimezone:  { type: Boolean, default: true },
+    showPot:       { type: Boolean, default: true },
   },
 
   data() {
@@ -70,6 +74,7 @@ export default {
     },
 
     elevationLabel() {
+      if (!this.showElevation) return null
       const e = HOST_CITY_ELEVATION[this.match.city]
       if (e == null) return null
       return `${e.toLocaleString('en-US')}m elevation`
@@ -123,11 +128,17 @@ export default {
       return team ? (TRAINING_CLIMATE[team] ?? null) : null
     },
 
+    potFor(slot) {
+      if (!this.showPot) return null
+      const team = this.assignments[slot]
+      return team ? teamPot(team) : null
+    },
+
     slotText(slot) {
       const team  = this.assignments[slot]
       if (!team) return slot
       const climate = TRAINING_CLIMATE[team]
-      const diff    = this.tzDiff(team)
+      const diff    = this.showTimezone ? this.tzDiff(team) : 0
       const tzStr   = diff !== 0 ? ` (${diff > 0 ? '+' : ''}${diff}h)` : ''
       return climate ? `${team} (${climate.tempC}°C)${tzStr}` : `${team}${tzStr}`
     },

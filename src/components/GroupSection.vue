@@ -7,6 +7,9 @@
       :key="match.matchId"
       :match="match"
       :scores="scores"
+      :show-elevation="showElevation"
+      :show-timezone="showTimezone"
+      :show-pot="showPot"
     />
   </section>
 </template>
@@ -19,8 +22,11 @@ export default {
   components: { GroupMatch },
 
   props: {
-    group:  { type: Object, required: true },
-    scores: { type: Object, default: () => ({}) },
+    group:         { type: Object,  required: true },
+    scores:        { type: Object,  default: () => ({}) },
+    showElevation: { type: Boolean, default: true },
+    showTimezone:  { type: Boolean, default: true },
+    showPot:       { type: Boolean, default: true },
   },
 
   computed: {

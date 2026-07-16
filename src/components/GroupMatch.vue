@@ -19,14 +19,14 @@
           class="team-name"
           :class="teamClass(match.home, showHomeWinner)"
           :style="teamStyle(match.home)"
-        >{{ teamText(match.home) }}</span>
+        ><span v-if="teamPot(match.home)" class="pot-badge">P{{ teamPot(match.home) }}</span>{{ teamText(match.home) }}</span>
       </div>
       <div class="team-row">
         <span
           class="team-name"
           :class="teamClass(match.away, showAwayWinner)"
           :style="teamStyle(match.away)"
-        >{{ teamText(match.away) }}</span>
+        ><span v-if="teamPot(match.away)" class="pot-badge">P{{ teamPot(match.away) }}</span>{{ teamText(match.away) }}</span>
       </div>
     </div>
   </article>
@@ -36,11 +36,15 @@
 import { TRAINING_CLIMATE, HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS, HOST_CITY_ELEVATION, HOST_CITY_TIMEZONE, TEAM_TIMEZONE } from '../data/climate.js'
 import { tempToColor, isPastDate, tzDiffHours } from '../utils/temperature.js'
 import { shouldFetchLiveTemp, fetchLiveTemp } from '../utils/openMeteo.js'
+import { teamPot as lookupPot } from '../data/seeding.js'
 
 export default {
   props: {
-    match:  { type: Object, required: true },
-    scores: { type: Object, default: () => ({}) },
+    match:         { type: Object,  required: true },
+    scores:        { type: Object,  default: () => ({}) },
+    showElevation: { type: Boolean, default: true },
+    showTimezone:  { type: Boolean, default: true },
+    showPot:       { type: Boolean, default: true },
   },
 
   data() {
@@ -64,6 +68,7 @@ export default {
     },
 
     elevationLabel() {
+      if (!this.showElevation) return null
       const e = HOST_CITY_ELEVATION[this.match.city]
       if (e == null) return null
       return `${e.toLocaleString('en-US')}m elevation`
@@ -108,9 +113,13 @@ export default {
       return tzDiffHours(TEAM_TIMEZONE[name], HOST_CITY_TIMEZONE[this.match.city], this.match.isoDate)
     },
 
+    teamPot(name) {
+      return this.showPot ? lookupPot(name) : null
+    },
+
     teamText(name) {
       const climate = TRAINING_CLIMATE[name]
-      const diff    = this.tzDiff(name)
+      const diff    = this.showTimezone ? this.tzDiff(name) : 0
       const tzStr   = diff !== 0 ? ` (${diff > 0 ? '+' : ''}${diff}h)` : ''
       return climate ? `${name} (${climate.tempC}°C)${tzStr}` : `${name}${tzStr}`
     },
