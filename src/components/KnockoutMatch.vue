@@ -18,30 +18,14 @@
           class="team-slot"
           :class="slotClass(match.home, showHomeWinner)"
           :style="slotStyle(match.home)"
-          @click="handleClick('home')"
-          @contextmenu.prevent="$emit('edit-slot', match.home)"
-          @touchstart.passive="onTouchStart(match.home)"
-          @touchend="onTouchEnd"
-          @touchmove.passive="onTouchEnd"
-        >
-          <span class="slot-main">{{ slotText(match.home) }}</span>
-          <span v-if="slotNote(match.home)" class="slot-note">{{ slotNote(match.home) }}</span>
-        </span>
+        >{{ slotText(match.home) }}</span>
       </div>
       <div class="team">
         <span
           class="team-slot"
           :class="slotClass(match.away, showAwayWinner)"
           :style="slotStyle(match.away)"
-          @click="handleClick('away')"
-          @contextmenu.prevent="$emit('edit-slot', match.away)"
-          @touchstart.passive="onTouchStart(match.away)"
-          @touchend="onTouchEnd"
-          @touchmove.passive="onTouchEnd"
-        >
-          <span class="slot-main">{{ slotText(match.away) }}</span>
-          <span v-if="slotNote(match.away)" class="slot-note">{{ slotNote(match.away) }}</span>
-        </span>
+        >{{ slotText(match.away) }}</span>
       </div>
     </div>
 
@@ -57,12 +41,8 @@
 import { TRAINING_CLIMATE, HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS, HOST_CITY_ELEVATION, HOST_CITY_TIMEZONE, TEAM_TIMEZONE } from '../data/climate.js'
 import { tempToColor, isPastDate, tzDiffHours } from '../utils/temperature.js'
 import { shouldFetchLiveTemp, fetchLiveTemp } from '../utils/openMeteo.js'
-import { describeSlot } from '../utils/slots.js'
-import { getWinner, toggleWinner } from '../utils/winnerStorage.js'
 
 export default {
-  emits: ['edit-slot'],
-
   props: {
     match:       { type: Object, required: true },
     assignments: { type: Object, required: true },
@@ -71,12 +51,7 @@ export default {
 
   data() {
     return {
-      homeWinner:      false,
-      awayWinner:      false,
-      liveTemp:        null,
-      pressTimer:      null,
-      pendingSlot:     null,
-      longPressActive: false,
+      liveTemp: null,
     }
   },
 
@@ -117,21 +92,18 @@ export default {
       return s === 'FINISHED' || s === 'AWARDED'
     },
 
+    // Winner highlighting only ever reflects a real result now — there's
+    // no manual fallback, since the bracket auto-populates from live scores.
     showHomeWinner() {
-      if (this.isFinished) return (this.matchScore.home ?? 0) > (this.matchScore.away ?? 0)
-      return this.homeWinner
+      return this.isFinished && (this.matchScore.home ?? 0) > (this.matchScore.away ?? 0)
     },
 
     showAwayWinner() {
-      if (this.isFinished) return (this.matchScore.away ?? 0) > (this.matchScore.home ?? 0)
-      return this.awayWinner
+      return this.isFinished && (this.matchScore.away ?? 0) > (this.matchScore.home ?? 0)
     },
   },
 
   async mounted() {
-    this.homeWinner = getWinner(this.match.matchId, 'home')
-    this.awayWinner = getWinner(this.match.matchId, 'away')
-
     if (shouldFetchLiveTemp(this.match.isoDate)) {
       const coords = HOST_CITY_COORDS[this.match.city]
       if (coords) {
@@ -141,38 +113,6 @@ export default {
   },
 
   methods: {
-    handleClick(side) {
-      if (this.longPressActive) {
-        this.longPressActive = false
-        return
-      }
-      if (this.matchScore) return
-      if (side === 'home') {
-        this.homeWinner = toggleWinner(this.match.matchId, 'home')
-        if (this.homeWinner) this.awayWinner = false
-      } else {
-        this.awayWinner = toggleWinner(this.match.matchId, 'away')
-        if (this.awayWinner) this.homeWinner = false
-      }
-    },
-
-    onTouchStart(slot) {
-      this.longPressActive = false
-      this.pendingSlot = slot
-      this.pressTimer = setTimeout(() => {
-        this.longPressActive = true
-        this.$emit('edit-slot', slot)
-        this.pressTimer = null
-      }, 500)
-    },
-
-    onTouchEnd() {
-      if (this.pressTimer) {
-        clearTimeout(this.pressTimer)
-        this.pressTimer = null
-      }
-    },
-
     tzDiff(team) {
       if (!team) return 0
       return tzDiffHours(TEAM_TIMEZONE[team], HOST_CITY_TIMEZONE[this.match.city], this.match.isoDate)
@@ -205,12 +145,6 @@ export default {
     slotStyle(slot) {
       const climate = this.getClimate(slot)
       return climate ? { '--temp-bg': tempToColor(climate.tempC) } : {}
-    },
-
-    slotNote(slot) {
-      const team = this.assignments[slot]
-      const desc = describeSlot(slot)
-      return (team && desc) ? `${desc} (${slot})` : desc
     },
   },
 }

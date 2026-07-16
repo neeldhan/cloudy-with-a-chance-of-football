@@ -14,14 +14,14 @@
     </div>
 
     <div class="teams">
-      <div class="team-row" @click="handleClick('home')">
+      <div class="team-row">
         <span
           class="team-name"
           :class="teamClass(match.home, showHomeWinner)"
           :style="teamStyle(match.home)"
         >{{ teamText(match.home) }}</span>
       </div>
-      <div class="team-row" @click="handleClick('away')">
+      <div class="team-row">
         <span
           class="team-name"
           :class="teamClass(match.away, showAwayWinner)"
@@ -36,7 +36,6 @@
 import { TRAINING_CLIMATE, HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS, HOST_CITY_ELEVATION, HOST_CITY_TIMEZONE, TEAM_TIMEZONE } from '../data/climate.js'
 import { tempToColor, isPastDate, tzDiffHours } from '../utils/temperature.js'
 import { shouldFetchLiveTemp, fetchLiveTemp } from '../utils/openMeteo.js'
-import { getWinner, toggleWinner } from '../utils/winnerStorage.js'
 
 export default {
   props: {
@@ -46,9 +45,7 @@ export default {
 
   data() {
     return {
-      homeWinner: false,
-      awayWinner: false,
-      liveTemp:   null,
+      liveTemp: null,
     }
   },
 
@@ -86,21 +83,18 @@ export default {
       return s === 'FINISHED' || s === 'AWARDED'
     },
 
+    // Winner highlighting only ever reflects a real result now — there's
+    // no manual fallback, since scores come straight from the live API.
     showHomeWinner() {
-      if (this.isFinished) return (this.matchScore.home ?? 0) > (this.matchScore.away ?? 0)
-      return this.homeWinner
+      return this.isFinished && (this.matchScore.home ?? 0) > (this.matchScore.away ?? 0)
     },
 
     showAwayWinner() {
-      if (this.isFinished) return (this.matchScore.away ?? 0) > (this.matchScore.home ?? 0)
-      return this.awayWinner
+      return this.isFinished && (this.matchScore.away ?? 0) > (this.matchScore.home ?? 0)
     },
   },
 
   async mounted() {
-    this.homeWinner = getWinner(this.match.matchId, 'home')
-    this.awayWinner = getWinner(this.match.matchId, 'away')
-
     if (shouldFetchLiveTemp(this.match.isoDate)) {
       const coords = HOST_CITY_COORDS[this.match.city]
       if (coords) {
@@ -110,17 +104,6 @@ export default {
   },
 
   methods: {
-    handleClick(side) {
-      if (this.matchScore) return
-      if (side === 'home') {
-        this.homeWinner = toggleWinner(this.match.matchId, 'home')
-        if (this.homeWinner) this.awayWinner = false
-      } else {
-        this.awayWinner = toggleWinner(this.match.matchId, 'away')
-        if (this.awayWinner) this.homeWinner = false
-      }
-    },
-
     tzDiff(name) {
       return tzDiffHours(TEAM_TIMEZONE[name], HOST_CITY_TIMEZONE[this.match.city], this.match.isoDate)
     },
