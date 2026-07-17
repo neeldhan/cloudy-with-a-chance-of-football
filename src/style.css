@@ -928,6 +928,10 @@ h1 {
 @media (max-width: 768px) {
   .top-nav { justify-content: center; padding: 1.4rem 1rem 0; }
   .nav-mark-title { font-size: 1.05rem; }
+  /* Title shrinks on mobile but the eyebrow above it didn't scale down
+     to match, so it ended up visibly wider than "Heat Bracket" below
+     it — scaled down by the same ratio here. */
+  .nav-mark-eyebrow { font-size: 0.48rem; letter-spacing: 0.055em; }
 
   /* Same width as desktop — the crest/score/footer layout needs the
      room to show real information (team names, temps) instead of
