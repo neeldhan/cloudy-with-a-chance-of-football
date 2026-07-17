@@ -58,33 +58,32 @@ There's also an **Insights** tab that turns the raw results into analysis: it cr
 * **Interactive knockout bracket** covering all six rounds — Round of 32 through to the Final — with match numbers, dates, stadiums, and host city temperatures
 * **Full group stage schedule** — all 72 matches across 12 groups (A–L), with past matches highlighted
 * **Live scores** — finished and in-progress match scores fetched automatically from football-data.org every 60 seconds, with a pulsing LIVE badge during in-play matches
-* **Auto winner highlighting** — once a match has an official score, the winning team is highlighted in gold automatically; manual toggling re-enabled for unplayed matches
+* **Auto winner highlighting** — once a match has an official score, the winning team gets a gold outline and gold text, layered on top of (not replacing) their climate-colour pill, so the temperature info survives a result
 
 ### Climate Explorer
 
 * **Training climate temperatures** displayed on every team as a colour-coded pill, using a blue → red gradient (cold → hot climate)
+* **FIFA seeding pot** — every team's 2026 draw pot (1, strongest, through 4) shown as a small badge before their name; see [FIFA Seeding](#fifa-seeding) for the analysis this feeds
 * **Host city average July temperatures** shown on every match card
 * **Real-time match-day weather** — for any match on or before tomorrow (that includes every match already played, not just yesterday's), the actual forecast/historical temperature for the host city is fetched live from Open-Meteo and displayed alongside the historical average
+* **Display toggles** — three switches (Elevation, Timezone, FIFA Seeding) let you turn off what you don't want cluttering the match cards; state persists to `localStorage`
 
 ### Bracket Editing
 
-* **Auto-populated results** — as group and knockout matches are decided, winners automatically advance into the next round's bracket slots, including resolving the "best 3rd place" qualifier slots once the real Round of 32 match actually kicks off
-* **Slot assignment** — right-click any bracket slot on desktop (or long-press on mobile) to manually assign a team to it, for anything not yet decided by a real result
-* **Manual winner toggle** — click or tap any team to highlight them as the winner of that match, for matches without an official API score
-* **Persistent state** — manual slot assignments and winner highlights are saved to `localStorage` and survive page refreshes; any that get superseded by a real result are automatically overridden
+* **Fully auto-populated** — winners automatically advance into the next round's bracket slots as group and knockout matches are decided, including resolving the "best 3rd place" qualifier slots once the real Round of 32 match actually kicks off. There's no manual override anymore; an undecided slot just shows a placeholder label ("Winner of Group A", "Runner-up, Group B", etc.) until the real result comes in
 
 ### Insights & Data Analysis
 
 * **Computed headline stats** — the app tallies every finished group stage match to answer the questions the whole project is built around: what's the win rate for teams playing within 8°C of their home climate versus beyond it, how do goals-per-game change with venue altitude, and how much bigger is the average timezone gap for eliminated teams than for qualifiers
 * **Climate comfort chart** — a sorted bar for every team showing the average temperature gap between their training base and the venues they played in, coloured blue (close to home) to red (far out of comfort), with qualified teams highlighted
-* **"Core Findings" cards** — four always-visible findings (climate comfort, altitude, timezone fatigue, climate extremes) computed live from the same data; see [Computed Insights](#computed-insights) for exactly how each one is derived
-* **High-res chart export** — the Climate Comfort, Altitude Factor, and Timezone Fatigue charts can each be exported as a standalone PNG (transparent background) or JPG image at 3x resolution, with an "As of [date]" stamp baked into the image
-* **Capacities export** — every computed stat (Core Findings, elevation tiers, and each team's climate/timezone gap) can be copied or downloaded as Capacities-ready markdown, one YAML frontmatter block per item; see [Capacities Export](#capacities-export) for the exact shape
+* **FIFA Seeding chart** — average group-stage points per draw pot, plus "biggest riser" and "biggest faller" spotlight teams, answering whether the December 2025 seeding actually predicted anything; see [FIFA Seeding](#fifa-seeding) for exactly how it's computed
+* **"Core Findings" cards** — five always-visible findings (climate comfort, altitude, timezone fatigue, climate extremes, seeding) computed live from the same data; see [Computed Insights](#computed-insights) for exactly how each one is derived
+* **High-res chart export** — the Climate Comfort, Altitude Factor, Timezone Fatigue, and FIFA Seeding charts can each be exported as a standalone PNG (transparent background) or JPG image at 3x resolution, with an "As of [date]" stamp baked into the image
+* **Capacities export** — every computed stat (Core Findings, elevation tiers, seeding pots, and each team's climate/timezone gap) can be copied or downloaded as Capacities-ready markdown, one YAML frontmatter block per item; see [Capacities Export](#capacities-export) for the exact shape
 
 ### Mobile
 
 * Full mobile responsiveness — the bracket scrolls horizontally with snap points, the group grid collapses to a single column, and tap targets meet minimum accessibility size guidelines
-* Long-press (500ms) replaces right-click for the slot editor on touch devices
 * iOS auto-zoom prevention on form inputs
 
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
@@ -175,19 +174,18 @@ The Cloudflare Worker is the one piece of server-side code in the project. It ac
 ### Component Tree
 
 ```
-App.vue                        – tab navigation, score polling (60s interval)
-├── BracketView.vue            – slot assignment state, auto-population via
-│                                 bracketProgression.js, SlotEditor orchestration
-│   ├── KnockoutMatch.vue      – score display, winner logic, long-press handler
-│   └── SlotEditor.vue        – team assignment overlay with datalist autocomplete
-├── ScheduleView.vue           – passes scores prop to groups
+App.vue                        – tab navigation, score polling (60s interval),
+│                                 display-toggle state (elevation/timezone/pot)
+├── BracketView.vue            – auto-population via bracketProgression.js
+│   └── KnockoutMatch.vue      – score display, winner highlight, pot badge
+├── ScheduleView.vue           – passes scores + display-toggle props to groups
 │   └── GroupSection.vue       – group title and team list
-│       └── GroupMatch.vue     – score display, winner logic, live temp fetch
-└── InsightsView.vue           – computed stats, climate/altitude/timezone charts,
-                                  Core Findings, chart export, Capacities export
+│       └── GroupMatch.vue     – score display, winner highlight, pot badge
+└── InsightsView.vue           – computed stats, climate/altitude/timezone/seeding
+                                  charts, Core Findings, chart export, Capacities export
 ```
 
-The computed statistics that drive the Insights tab live in [`src/utils/insights.js`](src/utils/insights.js) (`computeInsights`), which builds group standings and per-team climate/timezone aggregates from the live scores. The knockout bracket's automatic winner/qualifier propagation lives in [`src/utils/bracketProgression.js`](src/utils/bracketProgression.js) (`deriveAssignments`) — see [Bracket Auto-Population](#bracket-auto-population) below.
+The computed statistics that drive the Insights tab live in [`src/utils/insights.js`](src/utils/insights.js) (`computeInsights`), which builds group standings and per-team climate/timezone/seeding aggregates from the live scores. The knockout bracket's automatic winner/qualifier propagation lives in [`src/utils/bracketProgression.js`](src/utils/bracketProgression.js) (`deriveAssignments`) — see [Bracket Auto-Population](#bracket-auto-population) below.
 
 ### Data Files
 
@@ -196,7 +194,8 @@ src/data/
 ├── groups.js       – GROUP_TEAMS (A–L, 48 teams) and sorted TEAMS array
 ├── bracket.js      – 32 knockout matches with pre-computed isoDate and matchId
 ├── groupStage.js   – 72 group matches with pre-computed isoDate and matchId
-└── climate.js      – TRAINING_CLIMATE (~50 teams), HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS
+├── climate.js      – TRAINING_CLIMATE (~50 teams), HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS
+└── seeding.js       – TEAM_POT (all 48 teams → their 2026 draw pot, 1-4)
 ```
 
 ### Live Scores Flow
@@ -220,7 +219,7 @@ Once football-data.org shows a real match result, the bracket doesn't need a man
 
 The one case this can't compute from group standings alone is the 8 "best 3rd place" Round of 32 slots (labelled like `3A/B/C/D/F`) — which specific 3rd-place team advances depends on FIFA's own cross-group tiebreak ranking (using data like fair play points that isn't available here). Rather than reimplementing that ranking, `resolveThirdPlaceSlot()` reads the answer off the real Round of 32 fixture directly: once a slot's opponent is known, it checks which of the candidate 3rd-place teams has a recorded match against them at the `LAST_32` stage specifically (not just any later meeting between the same two teams, which could be a rematch). That check can only succeed once the match actually appears in the scores map, though — `handleScores()` in [`workers/scores.js`](workers/scores.js) only includes matches that are currently live or already finished (see the `LIVE`/`DONE` status sets), so a fixture that's merely been scheduled with both teams assigned isn't enough; the slot stays unresolved until that specific match kicks off.
 
-Auto-derived assignments always take precedence over a manual slot assignment for the same slot (see `mergedAssignments` in [`BracketView.vue`](src/components/BracketView.vue)) — manual assignments exist to predict a slot ahead of the real result, not to override it once the real result is in.
+There's no manual override anymore (see [Bracket Editing](#bracket-editing) in Features) — `assignments` in [`BracketView.vue`](src/components/BracketView.vue) is just `deriveAssignments(scores)` directly. A slot with no derivable result yet simply shows its placeholder label until one exists.
 
 ### Computed Insights
 
@@ -234,6 +233,8 @@ Everything on the Insights tab is plain JavaScript arithmetic over the live scor
 | `elevTiers` | Goals-per-game bucketed into four venue elevation bands (sea level / low / mid / high). Guadalajara (1,566m) falls in "mid"; Mexico City (2,240m, the highest World Cup venue ever hosted) falls in "high" |
 | `headlines` | The hero-stat aggregates: climate comfort/discomfort win rate (a team counts as "comfortable" if its average gap is under `COMFORT_THRESHOLD`, currently 8°C), goals/game per elevation tier, and average timezone gap for qualified vs. eliminated teams |
 | `tzSpotlight` | Three specific teams — `resilient`, `homeComfort`, `furthest` — picked from the per-team data (see below). Powers both the timezone hero card and the three callout cards, so they can never disagree with each other |
+| `potTiers` | The 4 FIFA draw pots, each with `teamCount`, `avgPoints`, and `qualifiedCount` among teams with at least one finished match. Powers the FIFA Seeding chart — see [FIFA Seeding](#fifa-seeding) below |
+| `seedingSpotlight` | Two teams — `biggestRiser`, `biggestFaller` — picked the same "let an extreme case tell the story" way as `tzSpotlight`, rather than an invented "expected points" model |
 | `qualified` (per team) | Whichever two teams currently top their group by points → goal difference → goals-for, evaluated continuously as results come in — not gated on the group stage being complete |
 
 **`tzSpotlight` selection logic:**
@@ -241,22 +242,29 @@ Everything on the Insights tab is plain JavaScript arithmetic over the live scor
 - `homeComfort` — the team with the *smallest* average timezone gap of anyone, ties broken by points (effectively "played at home")
 - `furthest` — the largest average timezone gap among *eliminated* teams; falls back to the overall largest gap early in the tournament, before any team has actually been eliminated yet
 
-**"Core Findings" cards** (`permanentInsights()` in `InsightsView.vue`) are four always-visible cards built directly from the fields above. They are recomputed on every render — nothing here is cached or stored:
+**"Core Findings" cards** (`permanentInsights()` in `InsightsView.vue`) are five always-visible cards built directly from the fields above. They are recomputed on every render — nothing here is cached or stored:
 
 1. **Climate Comfort** — `headlines.comfortWinPct` vs. `discomfortWinPct`, with their ratio (skipped if there's no discomfort-win data yet, to avoid a divide-by-zero).
 2. **Altitude Suppresses Scoring** — `headlines.midAltGoals` (Guadalajara) vs. `seaLevelGoals`, mentioning `highAltGoals` (Mexico City) too.
 3. **Timezone Fatigue** — `headlines.tzQualifiedAvg` vs. `tzEliminatedAvg`, and the gap between them.
 4. **Climate Extremes** — deliberately *not* a fixed °C threshold. It takes the worst 25% of teams by climate gap (at least one team, so this card can never disappear even early in the tournament) and reports their point range. The closing sentence is adaptive: it says the pattern is "a striking tipping point" only if every team in that worst-quartile cohort scored ≤1 point, and otherwise honestly says results have been "more mixed than a clean tipping point would suggest." A fixed threshold risks going quiet (no team crosses it yet) or eventually asserting a clean pattern that stops being true — the floating cohort avoids both failure modes at the cost of a less catchy, non-fixed headline number.
+5. **Seeding Holds Up** — `potTiers[0].avgPoints` (Pot 1) vs. `potTiers[3].avgPoints` (Pot 4), skipped until both pots have at least one finished match. Says whether the gap actually favours the stronger seeds, since it's entirely possible for Pot 4 to be ahead.
+
+### FIFA Seeding
+
+Every team's 2026 World Cup draw pot (1 = strongest seed, 4 = weakest) is hardcoded in [`src/data/seeding.js`](src/data/seeding.js) (`TEAM_POT`), since neither football-data.org nor any API this app already talks to exposes FIFA ranking or seeding data. The pots come from the actual December 5, 2025 draw, based on the FIFA Men's World Ranking of November 19, 2025; Pot 4 also includes six teams that were still playoff-pending at draw time (four UEFA play-off winners, two inter-confederation play-off winners) and were seeded as anonymous Pot 4 slots regardless of their eventual individual ranking. All 48 names were cross-checked against `groups.js` for an exact match.
+
+The pot badge (`P1` through `P4`) shown before each team name on the Bracket and Schedule tabs, and the FIFA Seeding chart and Core Finding on the Insights tab, all read from this same file — there's no separate, finer-grained numeric ranking used anywhere, deliberately: FIFA's ranking does give a precise 1-48 number for 42 of the 48 teams, but the six playoff qualifiers never had an individual draw-seeding rank of their own, so a full 1-48 list would mean splicing in a different, later ranking snapshot for those six specifically. Pot number is the one figure that's actually complete and official for all 48 teams.
 
 ### Chart Image Export
 
-Each of the three Insights charts (Climate Comfort, Altitude Factor, Timezone Fatigue) can be exported as a standalone PNG or JPG via `exportChart()` in [`InsightsView.vue`](src/components/InsightsView.vue), which rasterizes the chart's actual DOM node with [html2canvas](https://html2canvas.hertzen.com/) rather than redrawing it from scratch onto a canvas — these charts are solid colours (plus one simple linear gradient on the timezone bars) with no shadows or filters, so a straight rasterize holds up fine without a second hand-maintained renderer per chart type.
+Each of the four Insights charts (Climate Comfort, Altitude Factor, Timezone Fatigue, FIFA Seeding) can be exported as a standalone PNG or JPG via `exportChart()` in [`InsightsView.vue`](src/components/InsightsView.vue), which rasterizes the chart's actual DOM node with [html2canvas](https://html2canvas.hertzen.com/) rather than redrawing it from scratch onto a canvas — these charts are solid colours (plus one simple linear gradient on the timezone bars) with no shadows or filters, so a straight rasterize holds up fine without a second hand-maintained renderer per chart type.
 
 Exports render at a fixed 3x scale regardless of the chart's on-screen pixel size, so they hold up outside a browser window (e.g. printed). PNG keeps a real transparent background; JPG gets an explicit opaque background matching the on-screen card colour, since JPEG can't represent transparency at all. Every export also carries a small "As of [date]" line baked into the image itself, so a saved chart still shows when its numbers were current.
 
 ### Capacities Export
 
-The "Export to Capacities" button builds a single markdown document out of every computed stat on the Insights tab (the 4 Core Findings, the 4 elevation tiers, and every team's climate and timezone gap — around 100 items total) via `buildCapacitiesMarkdown()` in [`src/utils/capacitiesExport.js`](src/utils/capacitiesExport.js).
+The "Export to Capacities" button builds a single markdown document out of every computed stat on the Insights tab (the 5 Core Findings, the 4 elevation tiers, the 4 seeding pots, and every team's climate and timezone gap — around 110 items total) via `buildCapacitiesMarkdown()` in [`src/utils/capacitiesExport.js`](src/utils/capacitiesExport.js).
 
 Each item comes out as its own YAML frontmatter block (`type` / `tag` / `team` / `stat` / `body` / `date`) with no free-text body underneath, matching how [Capacities'](https://capacities.io/) markdown importer maps named frontmatter properties directly onto a typed object's fields rather than dumping everything into one page. Available as a copy-to-clipboard or a downloaded `.md` file, both producing the same document.
 
@@ -298,17 +306,7 @@ Switch to the **Group Stage Schedule** tab. All 72 matches are organised by grou
 
 ### Filling in the Knockout Bracket
 
-Switch to the **Knockout Bracket** tab. As group and knockout matches are decided, slots fill in automatically with the real results — including the "best 3rd place" qualifier slots, once the actual Round of 32 match kicks off. Anything not yet decided shows a placeholder label ("Winner of Group A", "Runner-up, Group B", etc.) until you assign a prediction or the real result comes in, whichever happens first.
-
-**To assign a team to a slot:**
-- **Desktop:** Right-click the slot → type or select a team from the dropdown → Save
-- **Mobile:** Long-press (hold for ~0.5 seconds) the slot → type or select a team → Save
-
-Assignments are saved automatically to your browser's local storage, so they persist across page refreshes.
-
-### Marking Match Winners
-
-Click or tap any team name in either the bracket or the schedule to highlight them as the winner of that match. Click again to deselect. This is a manual prediction tool for matches that haven't been played yet — once an official score arrives from the API, it takes over automatically.
+Switch to the **Knockout Bracket** tab. As group and knockout matches are decided, slots fill in automatically with the real results — including the "best 3rd place" qualifier slots, once the actual Round of 32 match kicks off. Anything not yet decided shows a placeholder label ("Winner of Group A", "Runner-up, Group B", etc.) until the real result comes in. Once a match has a result, the winning team gets a gold outline and gold text.
 
 ### Understanding the Temperature Colours
 
@@ -317,11 +315,13 @@ Each team's name appears in a colour-coded pill based on their training climate:
 - **Blue pills** — cool climate (e.g. Scotland 17°C)
 - **Orange/red pills** — hot climate (e.g. Qatar 38°C)
 
-The match card also shows the host city's average July temperature, and for recent matches, the actual forecast temperature on match day fetched in real time.
+The match card also shows the host city's average July temperature, and for recent matches, the actual forecast temperature on match day fetched in real time. A small "P1" through "P4" badge before each team's name shows their FIFA draw pot, 1 being the strongest seed.
+
+The **Elevation**, **Timezone**, and **FIFA Seeding** switches near the top of the page (Bracket and Schedule tabs only) let you turn off whichever of those you don't want cluttering the match cards; your choice is remembered on your next visit.
 
 ### Exploring the Insights Tab
 
-Switch to the **Insights** tab. At the top are headline figures computed from every finished group stage match — the climate-comfort win rate, goals-per-game by altitude, and the timezone-travel gap between qualifiers and eliminated teams — followed by a per-team climate comfort chart you can sort by team, temperature gap, or points. Below that, the "Core Findings" cards surface the same headline patterns as short written summaries.
+Switch to the **Insights** tab. At the top are headline figures computed from every finished group stage match — the climate-comfort win rate, goals-per-game by altitude, and the timezone-travel gap between qualifiers and eliminated teams — followed by a per-team climate comfort chart you can sort by team, temperature gap, or points. Further down are the Altitude Factor, Timezone Fatigue, and FIFA Seeding charts, then the "Core Findings" cards, which surface the same headline patterns (including seeding) as short written summaries.
 
 Each chart has an **Export** dropdown for a standalone PNG or JPG image of just that chart. The **Export to Capacities** button near the top of the tab (hover or focus the adjacent "What's this?" text for a quick explainer) bundles every computed stat on the page into Capacities-ready markdown, either copied to your clipboard or downloaded as a `.md` file.
 
@@ -373,9 +373,9 @@ wrangler secret put FOOTBALL_DATA_API_KEY
 
 ## Known Limitations
 
-* **localStorage only** — slot assignments and winner states are stored in the visitor's own browser. They are not synced across devices or shared between users
+* **localStorage only** — the elevation/timezone/seeding display toggles are stored in the visitor's own browser. They are not synced across devices or shared between users
 * **Team name normalisation** — if a team name in the API response doesn't match any known variant in the Worker's normalisation map, its score won't appear on the app. These are easy to fix by adding entries to `NAME_MAP` in [`workers/scores.js`](workers/scores.js)
-* **"Best 3rd place" slots wait on kickoff, not just the fixture** — the 8 qualifying 3rd-place knockout slots can't be computed from group standings alone (FIFA's cross-group tiebreak needs data this app doesn't have), so those specific slots read the answer off the real Round of 32 match instead. The Worker's scores endpoint only ever returns matches that are live or finished, so a fixture that's merely been scheduled with both teams assigned isn't enough — the slot stays unresolved until that match actually kicks off. Until then, it can be filled in manually like any other undecided slot, same as the rest of the bracket
+* **"Best 3rd place" slots wait on kickoff, not just the fixture** — the 8 qualifying 3rd-place knockout slots can't be computed from group standings alone (FIFA's cross-group tiebreak needs data this app doesn't have), so those specific slots read the answer off the real Round of 32 match instead. The Worker's scores endpoint only ever returns matches that are live or finished, so a fixture that's merely been scheduled with both teams assigned isn't enough — the slot shows a placeholder until that match actually kicks off
 * **football-data.org free tier** — the free tier has rate limits. The 60-second edge cache in the Worker ensures these are not hit under normal traffic, but very high traffic spikes could theoretically exhaust the per-minute limit
 * **No server-side rendering** — this is a fully client-side static app; initial page load fetches everything from flat data files and the Worker
 
@@ -432,4 +432,4 @@ If you discover a team name mismatch (a match with a known score that isn't appe
 
 ---
 
-**Last Updated: 11 July 2026**
+**Last Updated: 17 July 2026**

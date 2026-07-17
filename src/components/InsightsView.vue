@@ -40,7 +40,7 @@
         <div class="export-help">
           <span class="export-help-trigger" tabindex="0">What's this?</span>
           <div class="export-help-tooltip">
-            Exports every computed stat on this tab (Core Findings, elevation tiers, and each team's climate and timezone gap) as Capacities-ready markdown. Each item comes out as its own YAML frontmatter block, matching how Capacities' importer maps named properties onto a typed object. Copy to clipboard or download as a .md file, then import it into Capacities. Re-export any time to pull in updated results.
+            Exports every computed stat on this tab (Core Findings, elevation tiers, seeding pots, and each team's climate and timezone gap) as Capacities-ready markdown. Each item comes out as its own YAML frontmatter block, matching how Capacities' importer maps named properties onto a typed object. Copy to clipboard or download as a .md file, then import it into Capacities. Re-export any time to pull in updated results.
           </div>
         </div>
         <div class="export-menu">
@@ -215,6 +215,70 @@
             <div v-if="openExportMenu === 'tzChart'" class="export-dropdown">
               <button class="export-option" @click="doExport('tzChart', 'wc26-timezone-fatigue', 'png')">Export as PNG</button>
               <button class="export-option" @click="doExport('tzChart', 'wc26-timezone-fatigue', 'jpeg')">Export as JPG</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── FIFA Seeding ────────────────────────── -->
+      <section class="ins-section">
+        <div class="sec-eyebrow">FIFA Seeding</div>
+        <h3 class="sec-heading">Did the draw pots predict who'd do well?</h3>
+        <p class="sec-body">
+          Every team was placed into one of four seeding pots for the December 2025 draw, Pot 1 being the strongest.
+          Each bar shows the average group-stage points picked up by teams in that pot so far.
+        </p>
+
+        <div class="seed-callouts">
+          <div class="tz-call tz-green">
+            <div class="tz-call-label">Biggest riser</div>
+            <template v-if="insights.seedingSpotlight.biggestRiser">
+              <div class="tz-call-team">{{ insights.seedingSpotlight.biggestRiser.name }}</div>
+              <div class="tz-call-stat">Pot {{ insights.seedingSpotlight.biggestRiser.pot }} · {{ ptsLabel(insights.seedingSpotlight.biggestRiser.P) }} · Qualified</div>
+            </template>
+            <template v-else>
+              <div class="tz-call-team">—</div>
+              <div class="tz-call-stat">Not enough data yet</div>
+            </template>
+          </div>
+          <div class="tz-call tz-red">
+            <div class="tz-call-label">Biggest faller</div>
+            <template v-if="insights.seedingSpotlight.biggestFaller">
+              <div class="tz-call-team">{{ insights.seedingSpotlight.biggestFaller.name }}</div>
+              <div class="tz-call-stat">Pot {{ insights.seedingSpotlight.biggestFaller.pot }} · {{ ptsLabel(insights.seedingSpotlight.biggestFaller.P) }} · Eliminated</div>
+            </template>
+            <template v-else>
+              <div class="tz-call-team">—</div>
+              <div class="tz-call-stat">Not enough data yet</div>
+            </template>
+          </div>
+        </div>
+
+        <div class="seed-chart" ref="seedChart">
+          <p class="elev-chart-title">Average group-stage points by pot</p>
+          <div class="elev-bars">
+            <div v-for="tier in insights.potTiers" :key="tier.pot" class="elev-col">
+              <div class="elev-bar-wrap">
+                <div class="elev-gpg">{{ tier.avgPoints.toFixed(1) }} <span class="elev-gpg-unit">pts</span></div>
+                <div class="elev-bar-track">
+                  <div
+                    class="elev-bar"
+                    :style="{ height: (tier.avgPoints / 9 * 100) + '%', background: potColor(tier.pot) }"
+                  ></div>
+                </div>
+              </div>
+              <div class="elev-tier-name">Pot {{ tier.pot }}</div>
+              <div class="elev-games">{{ tier.teamCount }} team{{ tier.teamCount === 1 ? '' : 's' }}</div>
+            </div>
+          </div>
+          <p class="chart-asof">As of {{ asOfDate }}.</p>
+        </div>
+        <div class="chart-export-row">
+          <div class="export-menu">
+            <button class="export-btn" :disabled="exportingChart === 'seedChart'" @click.stop="toggleExportMenu('seedChart')">Export <span class="export-caret">▾</span></button>
+            <div v-if="openExportMenu === 'seedChart'" class="export-dropdown">
+              <button class="export-option" @click="doExport('seedChart', 'wc26-fifa-seeding', 'png')">Export as PNG</button>
+              <button class="export-option" @click="doExport('seedChart', 'wc26-fifa-seeding', 'jpeg')">Export as JPG</button>
             </div>
           </div>
         </div>
@@ -398,6 +462,18 @@ export default {
       return `rgb(${r},${g},${b})`
     },
 
+    // Maps a pot number (1-4) onto a blue→purple gradient for the seeding
+    // chart bars — deliberately a different pair of colours from the
+    // climate (blue→red) and altitude (blue→pink) charts so the three
+    // aren't visually interchangeable at a glance.
+    potColor(pot) {
+      const t = (pot - 1) / 3
+      const r = Math.round(56  + (168 - 56)  * t)
+      const g = Math.round(189 + (85  - 189) * t)
+      const b = Math.round(248 + (247 - 248) * t)
+      return `rgb(${r},${g},${b})`
+    },
+
     // CSS class for a points total, used to colour-code the points column in
     // both the climate and timezone tables (green for a strong points haul,
     // fading to grey for none).
@@ -413,7 +489,7 @@ export default {
     // from live headline stats instead of a fixed launch-day snapshot.
     permanentInsights() {
       if (!this.insights) return []
-      const { headlines, comfortThreshold, teamsByDelta } = this.insights
+      const { headlines, comfortThreshold, teamsByDelta, potTiers } = this.insights
       const findings = []
 
       const comfortRatio = headlines.discomfortWinPct > 0
@@ -466,6 +542,24 @@ export default {
           stat: `Worst ${cohort.length} gap${cohort.length === 1 ? '' : 's'} (≥${cohortFloor.toFixed(1)}°C): ${rangeLabel}`,
           body: `The ${cohort.length} team${cohort.length === 1 ? '' : 's'} with the largest average climate mismatch — ${cohortFloor.toFixed(1)}°C or more — ${cohort.length === 1 ? 'has' : 'have'} scored ${rangeLabel} across their group matches so far. `
             + (maxPts <= 1 ? 'A striking tipping point for climate adaptation.' : 'Results at the extreme end have been more mixed than a clean tipping point would suggest.'),
+        })
+      }
+
+      // Pot 1 (strongest seed) vs. Pot 4 (weakest) average points — the
+      // headline number for whether the December 2025 draw actually
+      // predicted anything. Skipped until both pots have at least one
+      // finished match, same divide-by-zero guard as Climate Comfort above.
+      const pot1 = potTiers[0], pot4 = potTiers[3]
+      if (pot1.teamCount > 0 && pot4.teamCount > 0) {
+        const seedGap = pot1.avgPoints - pot4.avgPoints
+        findings.push({
+          tag: 'Finding',
+          team: 'Seeding Holds Up',
+          stat: `Pot 1 avg ${pot1.avgPoints.toFixed(1)} pts vs. Pot 4 avg ${pot4.avgPoints.toFixed(1)} pts`,
+          body: `Teams from Pot 1, the strongest seeds in December's draw, have averaged ${pot1.avgPoints.toFixed(1)} group-stage points so far, versus ${pot4.avgPoints.toFixed(1)} for Pot 4. `
+            + (seedGap > 0
+              ? `A ${seedGap.toFixed(1)}-point gap in the seeds' favour — the draw pots have been a reasonable predictor of who'd do well.`
+              : `Pot 4 is actually ahead by ${Math.abs(seedGap).toFixed(1)} points, which is the opposite of what the seeding would suggest.`),
         })
       }
 
@@ -1030,6 +1124,22 @@ export default {
   margin-bottom: 1rem;
 }
 
+/* Reuses .tz-call/.tz-green/.tz-red/.tz-call-label/.tz-call-team/.tz-call-stat
+   from the timezone callouts above — only the grid needs its own class
+   since this row has 2 cards, not 3. */
+.seed-callouts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+/* Reuses .elev-bars/.elev-col/etc. from the altitude chart above — pot is
+   a 4-bucket tier just like elevation, so the same layout applies as-is. */
+.seed-chart {
+  margin-top: 0.5rem;
+}
+
 .tz-call {
   border-radius: 6px;
   padding: 0.75rem 0.85rem;
@@ -1178,6 +1288,7 @@ export default {
   .hero-grid      { grid-template-columns: 1fr; }
   .hero-num       { font-size: 2.2rem; }
   .tz-callouts    { grid-template-columns: 1fr; }
+  .seed-callouts  { grid-template-columns: 1fr; }
   .stories-grid   { grid-template-columns: 1fr; }
   .elev-bars      { grid-template-columns: repeat(2, 1fr); }
 

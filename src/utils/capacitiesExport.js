@@ -54,6 +54,16 @@ export function buildCapacitiesMarkdown(insights, findings) {
     })
   }
 
+  for (const tier of insights.potTiers) {
+    items.push({
+      tag:  'Seeding',
+      team: `Pot ${tier.pot}`,
+      stat: `${tier.avgPoints.toFixed(1)} avg pts (${tier.teamCount} teams)`,
+      body: `The ${tier.teamCount} team${tier.teamCount === 1 ? '' : 's'} in Pot ${tier.pot} of the December 2025 FIFA draw ${tier.teamCount === 1 ? 'has' : 'have'} averaged ${tier.avgPoints.toFixed(1)} group-stage points so far, with ${tier.qualifiedCount} qualified.`,
+      date,
+    })
+  }
+
   for (const team of insights.teamsByDelta) {
     items.push({
       tag:  'Climate',

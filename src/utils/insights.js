@@ -3,6 +3,7 @@ import {
   TRAINING_CLIMATE, HOST_CITY_TEMPS_JULY,
   HOST_CITY_ELEVATION, TEAM_TIMEZONE, HOST_CITY_TIMEZONE,
 } from '../data/climate.js'
+import { TEAM_POT }     from '../data/seeding.js'
 import { tzDiffHours } from './temperature.js'
 
 // A team counts as playing in "comfortable" conditions for a given match if
@@ -124,6 +125,7 @@ export function computeInsights(scores) {
           teamMap[team] = {
             name: team, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0,
             deltas: [], tzAbsDiffs: [], qualified: qualifiers.has(team), trainTemp: trainT,
+            pot: TEAM_POT[team] ?? null,
           }
         }
         const ts = teamMap[team]
@@ -199,16 +201,48 @@ export function computeInsights(scores) {
     furthest: maxBy(eliminatedTeams, 'avgTzDiff') ?? maxBy(teams, 'avgTzDiff'),
   }
 
-  // The full shape consumed by InsightsView.vue (charts, hero stats, Core
-  // Findings, and the AI prompt payload all read from this one object).
+  // Average group-stage points per FIFA draw pot (1 = strongest seed, 4 =
+  // weakest) — see TEAM_POT in data/seeding.js. Answers the question the
+  // seeding toggle exists for: did the December 2025 draw actually predict
+  // who'd do well? Only counts teams with at least one finished match, same
+  // as everything else on this tab.
+  const teamsWithPot = teams.filter(t => t.pot != null)
+  const potTiers = [1, 2, 3, 4].map(pot => {
+    const potTeams = teamsWithPot.filter(t => t.pot === pot)
+    return {
+      pot,
+      teamCount: potTeams.length,
+      avgPoints: mean(potTeams.map(t => t.P)),
+      qualifiedCount: potTeams.filter(t => t.qualified).length,
+    }
+  })
+
+  // Spotlights the biggest single-team upsets in each direction, the same
+  // "let an extreme case tell the story" approach as tzSpotlight above,
+  // rather than inventing a per-team "expected points" model.
+  const seedingSpotlight = {
+    // Qualified team from the weakest pot it can find — ties broken by
+    // points, so among several pot-4 survivors the highest-scoring one wins.
+    biggestRiser: [...qualifiedTeams].filter(t => t.pot != null)
+      .sort((a, b) => b.pot - a.pot || b.P - a.P)[0] ?? null,
+    // Eliminated team from the strongest pot it can find — ties broken by
+    // fewest points, the most dramatic version of "didn't live up to the seed".
+    biggestFaller: [...eliminatedTeams].filter(t => t.pot != null)
+      .sort((a, b) => a.pot - b.pot || a.P - b.P)[0] ?? null,
+  }
+
+  // The full shape consumed by InsightsView.vue — every chart, hero stat,
+  // and Core Finding on the tab reads from this one object.
   return {
     // sorted for the climate chart
     teamsByDelta: [...teams].sort((a, b) => a.avgDelta - b.avgDelta),
     // sorted for the timezone chart
     teamsByTz: [...teams].sort((a, b) => b.avgTzDiff - a.avgTzDiff),
     elevTiers,
+    potTiers,
     comfortThreshold: COMFORT_THRESHOLD,
     tzSpotlight,
+    seedingSpotlight,
     headlines: {
       comfortWinPct:     comfortTotal    > 0 ? (comfortWins    / comfortTotal)    * 100 : 0,
       discomfortWinPct:  discomfortTotal > 0 ? (discomfortWins / discomfortTotal) * 100 : 0,
