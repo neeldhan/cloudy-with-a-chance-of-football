@@ -282,6 +282,37 @@
             </div>
           </div>
         </div>
+
+        <div class="climate-chart" ref="seedTeamChart">
+          <p class="elev-chart-title">Every team, by points and pot</p>
+          <div class="cc-colheads">
+            <button class="col-sort-btn" :class="{ 'col-active': seedSort.key === 'name' }" @click="setSort(seedSort, 'name')">Team <span class="sort-icon">{{ sortIcon(seedSort, 'name') }}</span></button>
+            <button class="col-sort-btn" :class="{ 'col-active': seedSort.key === 'P' }" @click="setSort(seedSort, 'P')">Points <span class="sort-icon">{{ sortIcon(seedSort, 'P') }}</span></button>
+            <button class="col-sort-btn col-right" :class="{ 'col-active': seedSort.key === 'pot' }" @click="setSort(seedSort, 'pot')">Pot <span class="sort-icon">{{ sortIcon(seedSort, 'pot') }}</span></button>
+          </div>
+          <div
+            v-for="team in sortedSeed"
+            :key="team.name"
+            class="cc-row"
+          >
+            <div class="cc-name" :class="{ 'cc-qualified': team.qualified }">{{ team.name }}</div>
+            <div class="cc-track" :style="{ '--bw': Math.min(Math.max(team.P / 9 * 100, 2), 100) + '%' }">
+              <div class="cc-bar" :style="{ background: potColor(team.pot) }"></div>
+              <span class="cc-delta">{{ ptsLabel(team.P) }}</span>
+            </div>
+            <div class="cc-pts" :style="{ color: potColor(team.pot) }">{{ team.pot ?? '—' }}</div>
+          </div>
+          <p class="chart-asof">As of {{ asOfDate }}.</p>
+        </div>
+        <div class="chart-export-row">
+          <div class="export-menu">
+            <button class="export-btn" :disabled="exportingChart === 'seedTeamChart'" @click.stop="toggleExportMenu('seedTeamChart')">Export <span class="export-caret">▾</span></button>
+            <div v-if="openExportMenu === 'seedTeamChart'" class="export-dropdown">
+              <button class="export-option" @click="doExport('seedTeamChart', 'wc26-seeding-by-team', 'png')">Export as PNG</button>
+              <button class="export-option" @click="doExport('seedTeamChart', 'wc26-seeding-by-team', 'jpeg')">Export as JPG</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- ── Core Findings ──────────────────────── -->
@@ -335,10 +366,13 @@ export default {
 
   data() {
     return {
-      // Which column + direction the climate/timezone tables are currently
-      // sorted by. Read/written by applySort()/setSort() below.
-      climateSort: { key: 'avgDelta', asc: true },
-      tzSort:      { key: 'avgTzDiff', asc: true },
+      // Which column + direction each sortable table is currently sorted
+      // by, plus which of its own columns (if any) should default to
+      // descending the first time it's selected — every other column
+      // defaults to ascending. Read/written by applySort()/setSort() below.
+      climateSort: { key: 'avgDelta',  asc: true, descKey: 'P' },
+      tzSort:      { key: 'avgTzDiff', asc: true, descKey: 'P' },
+      seedSort:    { key: 'pot',       asc: true, descKey: null },
 
       // Ref name ('climateChart' | 'elevChart' | 'tzChart') of whichever
       // chart is mid-export, so that chart's export button disables itself
@@ -401,6 +435,15 @@ export default {
       if (!this.insights) return []
       return this.applySort(this.insights.teamsByTz, this.tzSort)
     },
+
+    // Per-team seeding table rows. teamsByDelta is just as good a starting
+    // array as teamsByTz here — applySort() re-sorts it regardless — so
+    // there's no need for computeInsights() to hand back a third pre-sorted
+    // copy of the same team list.
+    sortedSeed() {
+      if (!this.insights) return []
+      return this.applySort(this.insights.teamsByDelta, this.seedSort)
+    },
   },
 
   methods: {
@@ -414,14 +457,14 @@ export default {
 
     // Clicking a column header that's already the active sort flips
     // direction; clicking a different column switches to it with a sensible
-    // default direction (points high-to-low first, everything else
-    // low-to-high first).
+    // default direction — state.descKey (if set) starts high-to-low,
+    // everything else starts low-to-high.
     setSort(state, key) {
       if (state.key === key) {
         state.asc = !state.asc
       } else {
         state.key = key
-        state.asc = key !== 'P'  // points default descending; everything else ascending
+        state.asc = key !== state.descKey
       }
     },
 
