@@ -34,23 +34,20 @@ h1 {
   max-width: 820px;
 }
 
-/* ── Toolbar (tabs + display toggles) ──
-   A single compact row on wide screens (tabs left, a thin vertical rule,
-   toggles right) rather than a tall stacked card — the .toolbar-divider
-   and .toolbar flex-direction both switch to the stacked/horizontal-rule
-   variant under the mobile breakpoint below. */
+/* ── Toolbar (tabs, plus toggles stacked underneath) ──
+   Column layout deliberately, not row: the toggles only ever add/remove
+   height below the nav row, never width, so hiding them on the Insights
+   tab can't drag the tab buttons sideways as the card re-centres — that
+   was the whole problem with the row-based version this replaced. */
 
 .toolbar {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
   width: fit-content;
   max-width: calc(100% - 2rem);
   margin: 0 auto 1.5rem;
-  padding: 0.5rem 0.9rem;
+  padding: 0.6rem 1rem;
   background: rgba(2, 20, 12, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
@@ -58,9 +55,10 @@ h1 {
 }
 
 .toolbar-divider {
-  width: 1px;
-  height: 22px;
-  background: rgba(255, 255, 255, 0.12);
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.09);
+  margin: 0.6rem 0;
 }
 
 .main-nav {
@@ -98,6 +96,23 @@ h1 {
   justify-content: center;
   align-items: center;
   gap: 0.85rem;
+}
+
+.display-toggles-label {
+  display: inline-flex;
+  align-items: center;
+  /* Matches .ios-switch's own height, but that alone still isn't quite
+     enough to make the text look centred against it — nudged up a couple
+     px on top of that to actually land it visually, rather than relying
+     purely on flexbox math that doesn't account for font-metric quirks. */
+  height: 26px;
+  transform: translateY(-1px);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7dd3fc;
+  margin-right: 0.2rem;
 }
 
 .switch-row {
@@ -440,18 +455,5 @@ h1 {
   /* Slightly larger match card text on mobile */
   .match-header {
     font-size: 0.82rem;
-  }
-
-  /* A vertical divider stops making sense once the toolbar's contents
-     wrap onto their own lines — stack it and switch to a horizontal rule. */
-  .toolbar {
-    flex-direction: column;
-    width: auto;
-    padding: 0.8rem 1rem;
-  }
-
-  .toolbar-divider {
-    width: 90%;
-    height: 1px;
   }
 }

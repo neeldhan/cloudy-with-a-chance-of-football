@@ -28,71 +28,31 @@
 
     <template v-if="activeTab !== 'insights'">
       <div class="toolbar-divider"></div>
-      <div class="display-toggles">
-        <label class="switch-row">
-          <span class="switch-label">Elevation</span>
-          <button
-            type="button"
-            role="switch"
-            :aria-checked="showElevation"
-            class="ios-switch"
-            :class="{ on: showElevation }"
-            @click="toggleDisplay('showElevation')"
-          ><span class="ios-switch-knob"></span></button>
-        </label>
-        <label class="switch-row">
-          <span class="switch-label">Timezone</span>
-          <button
-            type="button"
-            role="switch"
-            :aria-checked="showTimezone"
-            class="ios-switch"
-            :class="{ on: showTimezone }"
-            @click="toggleDisplay('showTimezone')"
-          ><span class="ios-switch-knob"></span></button>
-        </label>
-        <label class="switch-row">
-          <span class="switch-label">FIFA Seeding</span>
-          <button
-            type="button"
-            role="switch"
-            :aria-checked="showPot"
-            class="ios-switch"
-            :class="{ on: showPot }"
-            @click="toggleDisplay('showPot')"
-          ><span class="ios-switch-knob"></span></button>
-        </label>
-      </div>
+      <DisplayToggles
+        :show-elevation="showElevation"
+        :show-timezone="showTimezone"
+        :show-pot="showPot"
+        @toggle="toggleDisplay"
+      />
     </template>
   </div>
 
-  <BracketView
-    v-show="activeTab === 'bracket'"
-    :scores="scores"
-    :show-elevation="showElevation"
-    :show-timezone="showTimezone"
-    :show-pot="showPot"
-  />
-  <ScheduleView
-    v-show="activeTab === 'schedule'"
-    :scores="scores"
-    :show-elevation="showElevation"
-    :show-timezone="showTimezone"
-    :show-pot="showPot"
-  />
+  <BracketView   v-show="activeTab === 'bracket'"  :scores="scores" :show-elevation="showElevation" :show-timezone="showTimezone" :show-pot="showPot" />
+  <ScheduleView  v-show="activeTab === 'schedule'" :scores="scores" :show-elevation="showElevation" :show-timezone="showTimezone" :show-pot="showPot" />
   <InsightsView  v-show="activeTab === 'insights'" :scores="scores" />
 </template>
 
 <script>
-import BracketView   from './components/BracketView.vue'
-import ScheduleView  from './components/ScheduleView.vue'
-import InsightsView  from './components/InsightsView.vue'
+import BracketView    from './components/BracketView.vue'
+import ScheduleView   from './components/ScheduleView.vue'
+import InsightsView   from './components/InsightsView.vue'
+import DisplayToggles from './components/DisplayToggles.vue'
 
 const SCORES_URL = import.meta.env.VITE_SCORES_URL
 const DISPLAY_PREFS_KEY = 'wc26DisplayPrefs'
 
 export default {
-  components: { BracketView, ScheduleView, InsightsView },
+  components: { BracketView, ScheduleView, InsightsView, DisplayToggles },
 
   data() {
     return {
