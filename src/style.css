@@ -227,6 +227,7 @@ h1 {
   opacity: 0.9;
   margin-bottom: 0.25rem;
   gap: 0.5rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .match-number {
@@ -366,6 +367,10 @@ h1 {
   padding: 0.25rem 0.6rem;
   color: #f9fafb;
   background: var(--temp-bg, rgba(15, 23, 42, 0.9));
+  /* Subtle by design — .winner below overrides both of these with its own
+     more pronounced versions, so only non-winner pills get the quiet one. */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .team-slot.has-temp {
@@ -420,10 +425,35 @@ h1 {
 /* ── Winner highlight ── */
 
 /* Marks the winner without hiding the climate-color pill underneath — a
-   gold ring + gold text rather than a solid fill that replaces it. */
+   metallic gold ring + warm gold text, rather than a solid fill that
+   replaces the pill or a single flat colour that reads as plain yellow.
+   box-shadow can't render a gradient, so the ring is a masked pseudo-
+   element instead — the standard technique for a gradient border that
+   still follows a rounded/pill shape correctly. */
 .winner {
-  box-shadow: inset 0 0 0 2px #facc15;
-  color: #facc15 !important;
+  position: relative;
+  color: #e0c26e !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 0 8px rgba(212, 175, 55, 0.3);
+  /* Lifts the pill off the page a little, rather than sitting flush with
+     the background — a dark shadow for depth plus a faint warm-gold one
+     underneath to stay cohesive with the ring/text colour. */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(212, 175, 55, 0.2);
+}
+
+.winner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  /* One smooth sweep rather than the busier multi-band foil effect this
+     started as — fewer, closer-together stops read as a subtle satin
+     sheen instead of a shiny/gaudy shimmer. */
+  background: linear-gradient(135deg, #d8bc6e 0%, #a3811f 50%, #d8bc6e 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
 }
 
 .team-slot.winner {
