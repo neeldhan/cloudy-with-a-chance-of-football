@@ -1,33 +1,57 @@
 <template>
-  <article class="match group-match" :class="{ past: isPast }" :data-match-id="match.matchId">
-    <div class="match-header">
-      <span class="match-date">{{ match.fullDate }}</span>
-      <span class="city-label">{{ cityLabel }}</span>
-      <span v-if="elevationLabel" class="elevation-label">{{ elevationLabel }}</span>
+  <article class="match group-match shine" :class="{ past: isPast }" :data-match-id="match.matchId">
+    <div class="match-top">
+      <span class="match-top-left">
+        <span v-if="elevationLabel" class="elevation-chip">
+          <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20 L9 8 L13 14 L16 9 L21 20 Z"/></svg>
+          {{ elevationLabel }}
+        </span>
+      </span>
+      <span v-if="isLive" class="status-chip status-live">Live</span>
+      <span v-else class="match-date">{{ match.fullDate }}</span>
     </div>
 
-    <div v-if="matchScore" class="match-score">
-      <span>{{ matchScore.home ?? '–' }}</span>
-      <span class="score-sep">–</span>
-      <span>{{ matchScore.away ?? '–' }}</span>
-      <span v-if="isLive" class="score-live">LIVE</span>
+    <div class="teams-row">
+      <div class="team-col">
+        <div class="team-crest" :class="{ 'crest-winner': showHomeWinner }">
+          <div v-if="flagFor(match.home)" class="team-flag" :style="{ backgroundImage: `url(${flagFor(match.home)})` }"></div>
+          <span v-else class="team-crest-fallback">{{ initials(match.home) }}</span>
+        </div>
+        <div v-if="potFor(match.home)" class="pot-badge">P{{ potFor(match.home) }}</div>
+        <div class="team-col-name" :class="{ 'name-winner': showHomeWinner }" :title="match.home">{{ match.home }}</div>
+        <div v-if="climateLine(match.home)" class="team-col-climate has-temp" :style="climateStyle(match.home)">{{ climateLine(match.home) }}</div>
+      </div>
+
+      <div class="match-score-mid" :class="{ 'score-vs': !matchScore }">
+        <template v-if="matchScore">{{ matchScore.home ?? '–' }}<span class="sep">–</span>{{ matchScore.away ?? '–' }}</template>
+        <template v-else>vs</template>
+      </div>
+
+      <div class="team-col">
+        <div class="team-crest" :class="{ 'crest-winner': showAwayWinner }">
+          <div v-if="flagFor(match.away)" class="team-flag" :style="{ backgroundImage: `url(${flagFor(match.away)})` }"></div>
+          <span v-else class="team-crest-fallback">{{ initials(match.away) }}</span>
+        </div>
+        <div v-if="potFor(match.away)" class="pot-badge">P{{ potFor(match.away) }}</div>
+        <div class="team-col-name" :class="{ 'name-winner': showAwayWinner }" :title="match.away">{{ match.away }}</div>
+        <div v-if="climateLine(match.away)" class="team-col-climate has-temp" :style="climateStyle(match.away)">{{ climateLine(match.away) }}</div>
+      </div>
     </div>
 
-    <div class="teams">
-      <div class="team-row">
-        <span
-          class="team-name"
-          :class="teamClass(match.home, showHomeWinner)"
-          :style="teamStyle(match.home)"
-        ><span v-if="teamPot(match.home)" class="pot-badge">P{{ teamPot(match.home) }}</span>{{ teamText(match.home) }}</span>
-      </div>
-      <div class="team-row">
-        <span
-          class="team-name"
-          :class="teamClass(match.away, showAwayWinner)"
-          :style="teamStyle(match.away)"
-        ><span v-if="teamPot(match.away)" class="pot-badge">P{{ teamPot(match.away) }}</span>{{ teamText(match.away) }}</span>
-      </div>
+    <div class="match-bottom">
+      <span class="meta-left">
+        <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span class="meta-lines">
+          <span class="meta-line">{{ match.city }}</span>
+        </span>
+      </span>
+      <span class="meta-right">
+        <span class="meta-lines meta-lines-right">
+          <span v-if="avgTempLine" class="meta-line">{{ avgTempLine }}</span>
+          <span v-if="matchDayTempLine" class="meta-line">{{ matchDayTempLine }}</span>
+        </span>
+        <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0z"/></svg>
+      </span>
     </div>
   </article>
 </template>
@@ -36,7 +60,8 @@
 import { TRAINING_CLIMATE, HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS, HOST_CITY_ELEVATION, HOST_CITY_TIMEZONE, TEAM_TIMEZONE } from '../data/climate.js'
 import { tempToColor, isPastDate, tzDiffHours } from '../utils/temperature.js'
 import { shouldFetchLiveTemp, fetchLiveTemp } from '../utils/openMeteo.js'
-import { teamPot as lookupPot } from '../data/seeding.js'
+import { teamPot } from '../data/seeding.js'
+import { flagUrl } from '../data/teamFlags.js'
 
 export default {
   props: {
@@ -58,20 +83,22 @@ export default {
       return isPastDate(this.match.isoDate)
     },
 
-    cityLabel() {
+    // Split into two short lines (avg, then match-day if we have it) rather
+    // than one long parenthetical — same treatment as KnockoutMatch.vue.
+    avgTempLine() {
       const julyTemp = HOST_CITY_TEMPS_JULY[this.match.city] ?? null
-      if (julyTemp == null) return this.match.city
-      const base = `${this.match.city} (${julyTemp}°C avg Jul`
-      return this.liveTemp != null
-        ? `${base}, ${this.liveTemp.toFixed(1)}°C match-day)`
-        : `${base})`
+      return julyTemp != null ? `${julyTemp}°C avg` : null
+    },
+
+    matchDayTempLine() {
+      return this.liveTemp != null ? `${this.liveTemp.toFixed(1)}°C match day` : null
     },
 
     elevationLabel() {
       if (!this.showElevation) return null
       const e = HOST_CITY_ELEVATION[this.match.city]
       if (e == null) return null
-      return `${e.toLocaleString('en-US')}m elevation`
+      return `${e.toLocaleString('en-US')}m`
     },
 
     matchScore() {
@@ -113,25 +140,35 @@ export default {
       return tzDiffHours(TEAM_TIMEZONE[name], HOST_CITY_TIMEZONE[this.match.city], this.match.isoDate)
     },
 
-    teamPot(name) {
-      return this.showPot ? lookupPot(name) : null
+    potFor(name) {
+      return this.showPot ? teamPot(name) : null
     },
 
-    teamText(name) {
+    flagFor(name) {
+      return flagUrl(name)
+    },
+
+    // Both teams in a group match are always known upfront (unlike the
+    // bracket, nothing here is ever an unresolved slot), so this is just
+    // real initials — "South Korea" → "SK".
+    initials(name) {
+      const words = name.split(/\s+/).filter(Boolean)
+      const letters = words.length > 1
+        ? words.slice(0, 3).map(w => w[0])
+        : [name.slice(0, 3)]
+      return letters.join('').toUpperCase().slice(0, 3)
+    },
+
+    climateLine(name) {
       const climate = TRAINING_CLIMATE[name]
       const diff    = this.showTimezone ? this.tzDiff(name) : 0
-      const tzStr   = diff !== 0 ? ` (${diff > 0 ? '+' : ''}${diff}h)` : ''
-      return climate ? `${name} (${climate.tempC}°C)${tzStr}` : `${name}${tzStr}`
+      const tzStr   = diff !== 0 ? `${diff > 0 ? '+' : ''}${diff}h` : ''
+      if (climate && tzStr) return `${climate.tempC}°C · ${tzStr}`
+      if (climate) return `${climate.tempC}°C`
+      return tzStr || null
     },
 
-    teamClass(name, isWinner) {
-      return {
-        'has-temp': !!TRAINING_CLIMATE[name],
-        winner:    isWinner,
-      }
-    },
-
-    teamStyle(name) {
+    climateStyle(name) {
       const climate = TRAINING_CLIMATE[name]
       return climate ? { '--temp-bg': tempToColor(climate.tempC) } : {}
     },

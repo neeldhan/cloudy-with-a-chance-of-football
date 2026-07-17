@@ -1,14 +1,18 @@
 <template>
-  <header class="app-header">
-    <h1>World Cup 2026 Heat Bracket</h1>
-    <p class="subtitle">
-      Are factors like heat and elevation making teams under- or over-perform at the World Cup?
-      Let's see what the data shows us.
-    </p>
-  </header>
+  <div class="glow glow-gold"></div>
+  <div class="glow glow-green"></div>
+  <div class="glow glow-amber"></div>
+  <div class="glow glow-blue"></div>
 
-  <div class="toolbar">
-    <nav class="main-nav">
+  <nav class="top-nav">
+    <div class="nav-mark">
+      <span class="nav-ball"></span>
+      <span class="nav-mark-text">
+        <span class="nav-mark-eyebrow">FIFA World Cup 2026</span>
+        <span class="nav-mark-title">Heat Bracket</span>
+      </span>
+    </div>
+    <div class="nav-tabs">
       <button
         class="tab-button"
         :class="{ active: activeTab === 'bracket' }"
@@ -24,17 +28,21 @@
         :class="{ active: activeTab === 'insights' }"
         @click="activeTab = 'insights'"
       >Insights</button>
-    </nav>
+    </div>
+  </nav>
 
-    <template v-if="activeTab !== 'insights'">
-      <div class="toolbar-divider"></div>
-      <DisplayToggles
-        :show-elevation="showElevation"
-        :show-timezone="showTimezone"
-        :show-pot="showPot"
-        @toggle="toggleDisplay"
-      />
-    </template>
+  <header class="app-header">
+    <h1>Are factors such as heat and elevation making teams under- or over-perform at the World Cup?</h1>
+    <p class="subtitle">Let's see what the data shows us.</p>
+  </header>
+
+  <div v-if="activeTab !== 'insights'" class="toggles-bar shine">
+    <DisplayToggles
+      :show-elevation="showElevation"
+      :show-timezone="showTimezone"
+      :show-pot="showPot"
+      @toggle="toggleDisplay"
+    />
   </div>
 
   <BracketView   v-show="activeTab === 'bracket'"  :scores="scores" :show-elevation="showElevation" :show-timezone="showTimezone" :show-pot="showPot" />
@@ -79,10 +87,13 @@ export default {
       this.refreshScores()
       this._scoreTimer = setInterval(this.refreshScores, 60_000)
     }
+
+    document.addEventListener('mousemove', this.handleShineMove)
   },
 
   beforeUnmount() {
     clearInterval(this._scoreTimer)
+    document.removeEventListener('mousemove', this.handleShineMove)
   },
 
   methods: {
@@ -91,6 +102,16 @@ export default {
         const res = await fetch(SCORES_URL)
         if (res.ok) this.scores = await res.json()
       } catch { /* network error — keep showing last known scores */ }
+    },
+
+    // Cursor-tracking shine on any .shine card: a single delegated listener
+    // rather than one per card, since cards mount/unmount across tabs.
+    handleShineMove(e) {
+      const el = e.target.closest('.shine')
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      el.style.setProperty('--x', `${e.clientX - rect.left}px`)
+      el.style.setProperty('--y', `${e.clientY - rect.top}px`)
     },
 
     toggleDisplay(key) {

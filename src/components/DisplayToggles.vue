@@ -1,6 +1,7 @@
 <template>
   <div class="display-toggles">
     <span class="display-toggles-label">Display</span>
+    <div class="toggles-divider"></div>
     <label class="switch-row">
       <span class="switch-label">Elevation</span>
       <button
@@ -24,7 +25,7 @@
       ><span class="ios-switch-knob"></span></button>
     </label>
     <label class="switch-row">
-      <span class="switch-label">FIFA Seeding</span>
+      <span class="switch-label"><span class="switch-label-full">FIFA Seeding</span><span class="switch-label-short">Seeding</span></span>
       <button
         type="button"
         role="switch"
@@ -38,12 +39,11 @@
 </template>
 
 <script>
-// Lives inside BracketView.vue and ScheduleView.vue (the only two tabs
-// these toggles actually affect) rather than in App.vue's shared toolbar —
-// that way the toolbar itself never resizes when switching to the Insights
-// tab. State is still owned by App.vue; this just renders it and emits
-// which one got clicked, same prop-down/event-up pattern used everywhere
-// else in the app (no store).
+// Rendered by App.vue inside its own .toggles-bar, separate from the nav
+// pill, and only when the active tab isn't Insights (the only two tabs
+// these toggles actually affect). State is still owned by App.vue; this
+// just renders it and emits which one got clicked, same prop-down/
+// event-up pattern used everywhere else in the app (no store).
 export default {
   emits: ['toggle'],
 

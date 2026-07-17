@@ -12,17 +12,17 @@
 
       <!-- ── Hero stats ─────────────────────────── -->
       <div class="hero-grid">
-        <div class="hero-card">
+        <div class="hero-card shine">
           <div class="hero-num">{{ insights.headlines.comfortWinPct.toFixed(0) }}&thinsp;<span class="hero-unit">%</span></div>
           <div class="hero-label">win rate within {{ insights.comfortThreshold }}°C of home conditions</div>
           <div class="hero-compare">vs. {{ insights.headlines.discomfortWinPct.toFixed(0) }}% beyond that gap</div>
         </div>
-        <div class="hero-card">
+        <div class="hero-card shine">
           <div class="hero-num">{{ insights.headlines.midAltGoals.toFixed(1) }} <span class="hero-unit">gpg</span></div>
           <div class="hero-label">goals per game at Guadalajara (1,566m)</div>
           <div class="hero-compare">vs. {{ insights.headlines.seaLevelGoals.toFixed(1) }} at sea-level venues</div>
         </div>
-        <div class="hero-card">
+        <div class="hero-card shine">
           <div class="hero-num">{{ insights.tzSpotlight.resilient ? insights.tzSpotlight.resilient.avgTzDiff.toFixed(1) : '—' }} <span class="hero-unit">h</span></div>
           <div class="hero-label">
             <template v-if="insights.tzSpotlight.resilient">{{ insights.tzSpotlight.resilient.name }}'s avg timezone gap per match — and they qualified</template>
@@ -53,7 +53,7 @@
       </div>
 
       <!-- ── Climate Comfort ────────────────────── -->
-      <section class="ins-section">
+      <section class="ins-section shine" :class="{ 'menu-open': openExportMenu === 'climateChart' }">
         <div class="sec-eyebrow">Climate Comfort</div>
         <h3 class="sec-heading">How much did temperature familiarity matter?</h3>
         <p class="sec-body">
@@ -81,7 +81,7 @@
           >
             <div class="cc-name" :class="{ 'cc-qualified': team.qualified }">{{ team.name }}</div>
             <div class="cc-track" :style="{ '--bw': Math.min(Math.max(team.avgDelta / 20 * 100, 2), 100) + '%' }">
-              <div class="cc-bar" :style="{ background: deltaColor(team.avgDelta) }"></div>
+              <div class="cc-bar" :style="{ background: deltaGradient(team.avgDelta) }"></div>
               <span class="cc-delta">{{ team.avgDelta.toFixed(1) }}°C</span>
             </div>
             <div class="cc-pts" :class="ptsClass(team.P)">{{ team.P }}</div>
@@ -100,7 +100,7 @@
       </section>
 
       <!-- ── Altitude Factor ────────────────────── -->
-      <section class="ins-section">
+      <section class="ins-section shine" :class="{ 'menu-open': openExportMenu === 'elevChart' }">
         <div class="sec-eyebrow">The Altitude Factor</div>
         <h3 class="sec-heading">Do high-elevation venues change the game?</h3>
         <p class="sec-body">
@@ -113,13 +113,13 @@
         <div class="elev-chart" ref="elevChart">
           <p class="elev-chart-title">Goals per game by elevation tier</p>
           <div class="elev-bars">
-            <div v-for="tier in insights.elevTiers" :key="tier.label" class="elev-col">
+            <div v-for="(tier, i) in insights.elevTiers" :key="tier.label" class="elev-col">
               <div class="elev-bar-wrap">
                 <div class="elev-gpg">{{ tier.goalsPerGame.toFixed(2) }} <span class="elev-gpg-unit">gpg</span></div>
                 <div class="elev-bar-track">
                   <div
                     class="elev-bar"
-                    :style="{ height: (tier.goalsPerGame / 4 * 100) + '%', background: elevColor(tier.min ?? 0) }"
+                    :style="{ height: (tier.goalsPerGame / 4 * 100) + '%', background: potGradient(i + 1) }"
                   ></div>
                 </div>
               </div>
@@ -142,7 +142,7 @@
       </section>
 
       <!-- ── Timezone Fatigue ───────────────────── -->
-      <section class="ins-section">
+      <section class="ins-section shine" :class="{ 'menu-open': openExportMenu === 'tzChart' }">
         <div class="sec-eyebrow">Timezone Fatigue</div>
         <h3 class="sec-heading">Does crossing time zones take a toll?</h3>
         <p class="sec-body">
@@ -200,8 +200,8 @@
             class="tz-row"
           >
             <div class="tz-name" :class="{ 'tz-qualified': team.qualified }">{{ team.name }}</div>
-            <div class="tz-track">
-              <div class="tz-bar" :style="{ width: (team.avgTzDiff / 20 * 100) + '%' }"></div>
+            <div class="tz-track" :style="{ '--bw': Math.min(Math.max(team.avgTzDiff / 20 * 100, 2), 100) + '%' }">
+              <div class="tz-bar" :style="{ background: tzGradient(team.avgTzDiff) }"></div>
             </div>
             <div class="tz-h">{{ team.avgTzDiff.toFixed(1) }}h</div>
             <div class="tz-pts" :class="ptsClass(team.P)">{{ team.P }}</div>
@@ -221,7 +221,7 @@
       </section>
 
       <!-- ── FIFA Seeding ────────────────────────── -->
-      <section class="ins-section">
+      <section class="ins-section shine" :class="{ 'menu-open': openExportMenu === 'seedChart' || openExportMenu === 'seedTeamChart' }">
         <div class="sec-eyebrow">FIFA Seeding</div>
         <h3 class="sec-heading">Did the draw pots predict who'd do well?</h3>
         <p class="sec-body">
@@ -263,7 +263,7 @@
                 <div class="elev-bar-track">
                   <div
                     class="elev-bar"
-                    :style="{ height: (tier.avgPoints / 9 * 100) + '%', background: potColor(tier.pot) }"
+                    :style="{ height: (tier.avgPoints / 9 * 100) + '%', background: potGradient(tier.pot) }"
                   ></div>
                 </div>
               </div>
@@ -297,7 +297,7 @@
           >
             <div class="cc-name" :class="{ 'cc-qualified': team.qualified }">{{ team.name }}</div>
             <div class="cc-track" :style="{ '--bw': Math.min(Math.max(team.P / 9 * 100, 2), 100) + '%' }">
-              <div class="cc-bar" :style="{ background: potColor(team.pot) }"></div>
+              <div class="cc-bar" :style="{ background: seedGradient(team.P) }"></div>
               <span class="cc-delta">{{ ptsLabel(team.P) }}</span>
             </div>
             <div class="cc-pts" :style="{ color: potColor(team.pot) }">{{ team.pot ?? '—' }}</div>
@@ -316,7 +316,7 @@
       </section>
 
       <!-- ── Core Findings ──────────────────────── -->
-      <section class="ins-section">
+      <section class="ins-section shine">
         <div class="sec-eyebrow">Core Findings</div>
         <h3 class="sec-heading">What the data set out to answer</h3>
         <div class="stories-grid">
@@ -336,7 +336,7 @@
 <script>
 import html2canvas             from 'html2canvas'
 import { computeInsights }     from '../utils/insights.js'
-import { tempToColor }         from '../utils/temperature.js'
+import { tempToColor, tempGradientStops } from '../utils/temperature.js'
 import { buildCapacitiesMarkdown } from '../utils/capacitiesExport.js'
 import CAPACITIES_ICON_SRC     from '../assets/capacities-icon-white.png'
 
@@ -345,6 +345,21 @@ import CAPACITIES_ICON_SRC     from '../assets/capacities-icon-white.png'
 // flattened to a solid color, so an exported JPEG looks like the on-screen
 // card instead of picking an arbitrary unrelated color.
 const EXPORT_JPEG_BG = '#05140a'
+
+// Low value → blue, high value → purple, t in [0, 1] — same "gradient
+// reflects magnitude" idea as heatStop() above, just a blue→purple family
+// for the seeding/timezone bars instead of blue→gold→red. Purple and blue
+// are close enough in hue that a plain RGB lerp doesn't desaturate in the
+// middle the way blue→red does, so no midpoint anchor needed here.
+function purpleBlueStop(t) {
+  const clamped = Math.max(0, Math.min(1, t))
+  const blue   = { r: 56,  g: 189, b: 248 } // bright sky-blue — matches potColor(1)
+  const purple = { r: 139, g: 92,  b: 246 } // violet-500
+  const r = Math.round(blue.r + (purple.r - blue.r) * clamped)
+  const g = Math.round(blue.g + (purple.g - blue.g) * clamped)
+  const b = Math.round(blue.b + (purple.b - blue.b) * clamped)
+  return `rgb(${r},${g},${b})`
+}
 
 // Fixed multiplier applied on top of the chart's on-screen pixel size, so
 // exports hold up outside a browser window (e.g. printed) instead of being
@@ -483,38 +498,73 @@ export default {
       return `${p} ${p === 1 ? 'pt' : 'pts'}`
     },
 
-    // Maps a climate gap (°C) onto the blue→red gradient used for the
-    // climate comfort chart bars — small gap stays blue/cool, gap of 25°C+
-    // saturates fully red. Delegates the actual colour math to the shared
-    // tempToColor() helper (also used for the temperature pills elsewhere
-    // in the app) by translating "gap size" into a fake "temperature".
+    // Maps a climate gap (°C) onto the shared temperature scale used for
+    // the pills everywhere else in the app too — translates "gap size"
+    // into a fake temperature (15°C = no gap, 40°C = 25°C+ gap).
     deltaColor(delta) {
       return tempToColor(15 + Math.min(delta, 25))
     },
 
-    // Maps a venue's minimum elevation (m) onto a blue→pink gradient for the
-    // altitude chart bars — sea level is blue, 2000m+ (Mexico City-ish) is
-    // fully pink. A simple linear interpolation between two fixed RGB
-    // triples, independent of deltaColor()/tempToColor() since this isn't a
-    // temperature scale.
-    elevColor(minElev) {
-      const t = Math.min(minElev / 2000, 1)
-      const r = Math.round(56  + (185 - 56)  * t)
-      const g = Math.round(189 + (28  - 189) * t)
-      const b = Math.round(248 + (28  - 248) * t)
-      return `rgb(${r},${g},${b})`
+    // A bar filled with deltaColor() alone reads as one flat swatch. A
+    // naive two-point `linear-gradient(a, b)` fixes that but only samples
+    // the start and end colours and lets the browser lerp straight
+    // between them — for a big-gap bar that cuts blue straight to red
+    // through a muddy purple, skipping the green/yellow the real scale
+    // passes through. tempGradientStops() includes every anchor the range
+    // crosses so the bar's sweep matches the scale exactly.
+    deltaGradient(delta) {
+      const endTemp = 15 + Math.min(delta, 25)
+      return `linear-gradient(90deg, ${tempGradientStops(15, endTemp)})`
     },
 
-    // Maps a pot number (1-4) onto a blue→purple gradient for the seeding
-    // chart bars — deliberately a different pair of colours from the
-    // climate (blue→red) and altitude (blue→pink) charts so the three
-    // aren't visually interchangeable at a glance.
+    // Maps a pot number (1-4) onto a purple→blue gradient — pot 1 (the
+    // strongest teams, and in practice the highest-points tier) is
+    // purple, pot 4 (lowest points) is blue, matching the same "low
+    // value = blue, high value = purple" convention purpleBlueStop()
+    // uses. sqrt() on the raw 0-1 position biases it toward purple
+    // sooner across the 4 pots — a plain linear ramp left blue reading
+    // as the dominant colour for too much of the sequence before purple
+    // properly took over. Also reused directly for the altitude chart's
+    // 4 elevation-tier bars (tier index + 1 standing in for "pot"), so
+    // both 4-block charts share the same colour language.
     potColor(pot) {
-      const t = (pot - 1) / 3
+      const raw = (4 - pot) / 3
+      const t = Math.sqrt(raw)
       const r = Math.round(56  + (168 - 56)  * t)
       const g = Math.round(189 + (85  - 189) * t)
       const b = Math.round(248 + (247 - 248) * t)
       return `rgb(${r},${g},${b})`
+    },
+
+    // Each of the 4 bars (pot tiers, or elevation tiers via i+1 above)
+    // stays dominated by its own potColor() rather than sweeping across
+    // its full height — a hint of pot+1's colour at the base (bottom,
+    // since these bars grow upward) that eases into this tier's own
+    // colour over the first ~60% of the bar. The scale runs purple (1) →
+    // blue (4), so tier 4's colour (bluest) feeds into the base of tier
+    // 3, tier 3's into tier 2, tier 2's into tier 1 — a continuous
+    // handoff toward purple. Tier 4 has no tier above it, so it comes
+    // out solid.
+    potGradient(pot) {
+      const hint = this.potColor(Math.min(pot + 1, 4))
+      const main = this.potColor(pot)
+      return `linear-gradient(0deg, ${hint} 0%, ${main} 60%, ${main} 100%)`
+    },
+
+    // Same "sweep from the low anchor to a magnitude-scaled colour" pattern
+    // as deltaGradient() above, blue→purple family: a low-points bar stays
+    // close to blue end-to-end, a high-points bar's right edge pushes
+    // further into purple. Points cap at 9 (3 wins).
+    seedGradient(points) {
+      const t = Math.min(points / 9, 1)
+      return `linear-gradient(90deg, ${purpleBlueStop(0)}, ${purpleBlueStop(t)})`
+    },
+
+    // Same idea for the timezone bars, scaled against the same 20h cap the
+    // bar width itself already uses.
+    tzGradient(avgTzDiff) {
+      const t = Math.min(avgTzDiff / 20, 1)
+      return `linear-gradient(90deg, ${purpleBlueStop(0)}, ${purpleBlueStop(t)})`
     },
 
     // CSS class for a points total, used to colour-code the points column in
@@ -651,6 +701,23 @@ export default {
           // JPEG can't represent transparency, so it gets an explicit
           // opaque background matching the card behind it on-screen.
           backgroundColor: isJpeg ? EXPORT_JPEG_BG : null,
+          // html2canvas can't rasterize `background-clip: text` gradient
+          // text (it paints the full gradient block behind barely-visible
+          // text instead of clipping to the glyphs) and doesn't reliably
+          // respect low-alpha rgba backgrounds either — both fine on
+          // screen, both wrong in the exported image. onclone runs on an
+          // offscreen clone right before capture, so overriding these
+          // here doesn't touch the live page at all.
+          onclone: (clonedDoc) => {
+            clonedDoc.querySelectorAll('.col-sort-btn.col-active').forEach(node => {
+              node.style.background = 'none'
+              node.style.webkitTextFillColor = '#f4d35e'
+              node.style.color = '#f4d35e'
+            })
+            clonedDoc.querySelectorAll('.cc-track, .tz-track').forEach(node => {
+              node.style.background = 'rgba(20, 18, 12, 0.7)'
+            })
+          },
         })
 
         const mime = isJpeg ? 'image/jpeg' : 'image/png'
@@ -713,20 +780,24 @@ export default {
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #7dd3fc;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
   margin: 0 0 0.3rem;
 }
 
 .ins-title {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 2.4rem;
+  font-weight: 800;
   margin: 0 0 0.3rem;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
 }
 
 .ins-sub {
-  font-size: 0.82rem;
-  opacity: 0.6;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -746,21 +817,27 @@ export default {
 }
 
 .hero-card {
-  background: rgba(5, 20, 10, 0.96);
-  border-radius: 8px;
-  padding: 1rem 1rem 0.9rem;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 10px 25px rgba(0,0,0,0.45);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-card);
+  padding: 1.2rem 1.2rem 1.1rem;
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
 }
 
 .hero-num {
   font-size: 3rem;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
-  color: #f9fafb;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .hero-unit {
@@ -771,7 +848,7 @@ export default {
 
 .hero-label {
   font-size: 0.78rem;
-  opacity: 0.85;
+  color: var(--text-secondary);
   margin-top: 0.4rem;
   line-height: 1.4;
   flex: 1;
@@ -779,7 +856,7 @@ export default {
 
 .hero-compare {
   font-size: 0.7rem;
-  color: #7dd3fc;
+  color: var(--text-tertiary);
   margin-top: 0.5rem;
   font-weight: 500;
 }
@@ -847,14 +924,16 @@ export default {
   right: 0;
   width: 320px;
   max-width: calc(100vw - 2rem);
-  background: #0a1f12;
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.45);
+  background: rgba(10, 8, 14, 0.92);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
   padding: 0.65rem 0.8rem;
   font-size: 0.7rem;
   line-height: 1.5;
-  color: rgba(255,255,255,0.75);
+  color: var(--text-secondary);
   opacity: 0;
   visibility: hidden;
   transform: translateY(-4px);
@@ -885,13 +964,15 @@ export default {
   letter-spacing: 0.03em;
   padding: 0.4rem 0.85rem;
   border-radius: 999px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: rgba(255,255,255,0.6);
-  transition: background 0.15s, color 0.15s, opacity 0.15s;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  transition: background 0.15s, color 0.15s, opacity 0.15s, border-color 0.15s;
 }
 
-.export-btn:hover:not(:disabled) { background: rgba(255,255,255,0.12); color: #f9fafb; }
+.export-btn:hover:not(:disabled) { background: var(--glass-bg-strong); color: var(--text-primary); border-color: rgba(244, 211, 94, 0.3); }
 .export-btn:disabled              { opacity: 0.4; cursor: default; }
 
 .export-caret { font-size: 0.6rem; opacity: 0.7; }
@@ -908,10 +989,12 @@ export default {
   top: calc(100% + 6px);
   right: 0;
   min-width: 165px;
-  background: #0a1f12;
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.45);
+  background: rgba(10, 8, 14, 0.92);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
   overflow: hidden;
   z-index: 20;
 }
@@ -924,18 +1007,31 @@ export default {
   cursor: pointer;
   padding: 0.6rem 0.85rem;
   font-size: 0.8rem;
-  color: rgba(255,255,255,0.75);
+  color: var(--text-secondary);
 }
 
-.export-option:hover { background: rgba(255,255,255,0.08); color: #f9fafb; }
+.export-option:hover { background: var(--glass-bg-strong); color: var(--text-primary); }
 
 /* ── Section card ── */
 .ins-section {
-  background: rgba(5, 20, 10, 0.96);
-  border-radius: 8px;
-  padding: 1.2rem 1.25rem 1.4rem;
-  margin-bottom: 0.75rem;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 10px 25px rgba(0,0,0,0.45);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-card);
+  padding: 1.3rem 1.35rem 1.5rem;
+  margin-bottom: 0.9rem;
+  box-shadow: var(--shadow-card);
+}
+
+/* backdrop-filter makes .ins-section its own stacking context, so its
+   .export-dropdown (however high its own z-index) can never paint above
+   a *sibling* section's content — the sibling isn't inside that context
+   at all. Bumping the open section itself above its siblings, only while
+   its menu is open, is what actually lets the dropdown clear the card
+   below it. */
+.ins-section.menu-open {
+  z-index: 30;
 }
 
 .sec-eyebrow {
@@ -943,26 +1039,30 @@ export default {
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #7dd3fc;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
   margin-bottom: 0.3rem;
 }
 
 .sec-heading {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
   margin: 0 0 0.5rem;
 }
 
 .sec-body {
   font-size: 0.82rem;
-  opacity: 0.8;
+  color: var(--text-secondary);
   line-height: 1.6;
   margin: 0 0 1rem;
 }
 
 .sec-body strong {
-  color: #f9fafb;
-  opacity: 1;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -1006,7 +1106,10 @@ export default {
 
 .col-sort-btn.col-active {
   opacity: 1;
-  color: #7dd3fc;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .col-right { justify-self: end; }
@@ -1050,8 +1153,8 @@ export default {
 .cc-track {
   position: relative;
   background: rgba(255,255,255,0.06);
-  border-radius: 2px;
-  height: 14px;
+  border-radius: 999px;
+  height: 10px;
   overflow: hidden;
 }
 
@@ -1061,7 +1164,7 @@ export default {
   left: 0;
   bottom: 0;
   width: var(--bw);
-  border-radius: 2px;
+  border-radius: 999px;
 }
 
 .cc-delta {
@@ -1122,7 +1225,7 @@ export default {
   font-size: 1.3rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #f9fafb;
+  color: var(--text-primary);
 }
 
 .elev-bar-track {
@@ -1198,7 +1301,10 @@ export default {
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  opacity: 0.6;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
   margin-bottom: 0.2rem;
 }
 
@@ -1246,17 +1352,25 @@ export default {
 
 .tz-qualified { opacity: 1; color: #86efac; }
 
+/* Same treatment as .cc-track/.cc-bar (position:relative + an absolutely
+   positioned bar sized via --bw) rather than the plain-flow narrower
+   version this used to be — the two charts read as different chart
+   systems otherwise. */
 .tz-track {
+  position: relative;
   background: rgba(255,255,255,0.06);
-  border-radius: 2px;
+  border-radius: 999px;
   height: 10px;
   overflow: hidden;
 }
 
 .tz-bar {
-  height: 100%;
-  border-radius: 2px;
-  background: linear-gradient(to right, #818cf8, #6366f1);
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--bw);
+  border-radius: 999px;
 }
 
 .tz-h {
@@ -1294,14 +1408,17 @@ export default {
 
 .story-pos  { background: rgba(74,222,128,0.06);  border-color: rgba(74,222,128,0.15); }
 .story-neg  { background: rgba(239,68,68,0.06);   border-color: rgba(239,68,68,0.15); }
-.story-core { background: rgba(125,211,252,0.05); border-color: rgba(125,211,252,0.12); }
+.story-core { background: rgba(244,211,94,0.06);  border-color: rgba(244,211,94,0.18); }
 
 .story-tag {
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  opacity: 0.5;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .story-team {

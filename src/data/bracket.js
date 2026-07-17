@@ -1,4 +1,4 @@
-import { toISODate } from '../utils/temperature.js'
+import { toISODate, weekdayAbbrev } from '../utils/temperature.js'
 
 const raw = [
   {
@@ -79,9 +79,15 @@ const raw = [
 
 export const bracketData = raw.map(round => ({
   ...round,
-  matches: round.matches.map(match => ({
-    ...match,
-    matchId: `K-${match.matchNumber}`,
-    isoDate: toISODate(match.date),
-  })),
+  matches: round.matches.map(match => {
+    const isoDate = toISODate(match.date)
+    return {
+      ...match,
+      matchId: `K-${match.matchNumber}`,
+      isoDate,
+      // "June 28, 2026" -> "Sun, June 28, 2026" — matches the group stage
+      // schedule's date format, which already leads with the weekday.
+      fullDate: `${weekdayAbbrev(isoDate)}, ${match.date}`,
+    }
+  }),
 }))
