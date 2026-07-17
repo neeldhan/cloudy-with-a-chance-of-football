@@ -31,9 +31,9 @@
     </div>
   </nav>
 
-  <header class="app-header">
-    <h1>Are factors such as heat and elevation making teams under- or over-perform at the World Cup?</h1>
-    <p class="subtitle">Let's see what the data shows us.</p>
+  <header v-if="activeTab !== 'insights'" class="app-header">
+    <h1>{{ activeTab === 'bracket' ? 'Knockout Bracket' : 'Group Stage Schedule' }}</h1>
+    <p class="subtitle">Are factors such as heat and elevation making teams under- or over-perform at the World Cup? Let's see what the data shows us.</p>
   </header>
 
   <div v-if="activeTab !== 'insights'" class="toggles-bar shine">

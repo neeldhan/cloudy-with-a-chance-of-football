@@ -763,8 +763,12 @@ export default {
 
 <style scoped>
 /* ── Container ── */
+/* Top padding matches .app-header's on the other two tabs — Insights no
+   longer has that shared header above it (App.vue hides it for this
+   tab), so this eyebrow is effectively its own page heading and needs
+   the same breathing room under the nav. */
 .insights {
-  padding: 0.75rem 1.5rem 3rem;
+  padding: 2.6rem 1.5rem 3rem;
   max-width: 900px;
   margin: 0 auto;
 }

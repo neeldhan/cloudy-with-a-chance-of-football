@@ -15,7 +15,7 @@
     <div class="teams-row">
       <div class="team-col">
         <div class="team-crest" :class="{ 'crest-winner': showHomeWinner }">
-          <div v-if="flagFor(match.home)" class="team-flag" :style="{ backgroundImage: `url(${flagFor(match.home)})` }"></div>
+          <div v-if="flagFor(match.home)" class="team-flag" :style="flagStyle(match.home)"></div>
           <span v-else class="team-crest-fallback">{{ initials(match.home) }}</span>
         </div>
         <div v-if="potFor(match.home)" class="pot-badge">P{{ potFor(match.home) }}</div>
@@ -30,7 +30,7 @@
 
       <div class="team-col">
         <div class="team-crest" :class="{ 'crest-winner': showAwayWinner }">
-          <div v-if="flagFor(match.away)" class="team-flag" :style="{ backgroundImage: `url(${flagFor(match.away)})` }"></div>
+          <div v-if="flagFor(match.away)" class="team-flag" :style="flagStyle(match.away)"></div>
           <span v-else class="team-crest-fallback">{{ initials(match.away) }}</span>
         </div>
         <div v-if="potFor(match.away)" class="pot-badge">P{{ potFor(match.away) }}</div>
@@ -157,6 +157,16 @@ export default {
     flagFor(slot) {
       const team = this.assignments[slot]
       return team ? flagUrl(team) : null
+    },
+
+    // Building the style as an object (rather than a `url(${...})` string
+    // straight in the template) is what lets the value be safely quoted —
+    // some of the flag SVGs get inlined as data: URIs by Vite, and an
+    // unquoted `url(...)` breaks the moment that data URI contains a
+    // character CSS treats as special unquoted (e.g. a literal quote).
+    flagStyle(slot) {
+      const url = this.flagFor(slot)
+      return url ? { backgroundImage: `url("${url}")` } : {}
     },
 
     // Resolved team name once the bracket has progressed far enough to know

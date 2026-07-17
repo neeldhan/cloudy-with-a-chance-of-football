@@ -135,8 +135,12 @@ body::before {
   }
 }
 
+/* Same top padding regardless of tab (h1's content just switches between
+   "Knockout Bracket" and "Group Stage Schedule") — Insights hides this
+   header entirely rather than reusing it, so there's no third case to
+   keep in sync here. */
 .app-header {
-  padding: 1.8rem 1rem 0.9rem;
+  padding: 2.6rem 1rem 0.9rem;
 }
 
 h1 {
