@@ -588,12 +588,20 @@ export default {
       const comfortRatio = headlines.discomfortWinPct > 0
         ? headlines.comfortWinPct / headlines.discomfortWinPct
         : null
+      // Ratio can land on either side of 1 — the old copy always called it
+      // an "advantage" regardless, which would have been backwards if the
+      // comfortable cohort ever actually won less often.
+      const comfortSuffix = comfortRatio == null
+        ? ' across the 48-team field.'
+        : comfortRatio >= 1
+          ? ` — a ${comfortRatio.toFixed(2)}× advantage across the 48-team field.`
+          : ` — a ${(1 / comfortRatio).toFixed(2)}× disadvantage across the 48-team field.`
       findings.push({
         tag: 'Finding',
-        team: 'Climate Comfort',
+        team: 'Climate Comfort Boosts Win Rate',
         stat: `${headlines.comfortWinPct.toFixed(0)}% vs. ${headlines.discomfortWinPct.toFixed(0)}% win rate`,
         body: `Teams playing within ${comfortThreshold}°C of their home training temperature have won ${headlines.comfortWinPct.toFixed(0)}% of individual match sides, versus ${headlines.discomfortWinPct.toFixed(0)}% for teams in more alien conditions`
-          + (comfortRatio ? ` — a ${comfortRatio.toFixed(2)}× advantage across the 48-team field.` : ' across the 48-team field.'),
+          + comfortSuffix,
       })
 
       // Guadalajara (1,566m) sits in the "mid" elevation tier, Mexico City
@@ -608,7 +616,7 @@ export default {
       const tzGap = Math.abs(headlines.tzQualifiedAvg - headlines.tzEliminatedAvg)
       findings.push({
         tag: 'Finding',
-        team: 'Timezone Fatigue',
+        team: 'Timezone Fatigue Tracks With Elimination',
         stat: `Qualifiers avg ${headlines.tzQualifiedAvg.toFixed(1)}h · Eliminated avg ${headlines.tzEliminatedAvg.toFixed(1)}h`,
         body: `Teams that have advanced from the group stage have averaged ${headlines.tzQualifiedAvg.toFixed(1)}h of timezone adjustment per match, versus ${headlines.tzEliminatedAvg.toFixed(1)}h for eliminated sides — a ${tzGap.toFixed(1)}h gap between the two groups.`,
       })
@@ -631,7 +639,7 @@ export default {
         const rangeLabel = minPts === maxPts ? this.ptsLabel(maxPts) : `${minPts}–${maxPts} points`
         findings.push({
           tag: 'Finding',
-          team: 'Climate Extremes',
+          team: maxPts <= 1 ? 'Climate Extremes Sink Group Stage Hopes' : "Climate Extremes Don't Guarantee Elimination",
           stat: `Worst ${cohort.length} gap${cohort.length === 1 ? '' : 's'} (≥${cohortFloor.toFixed(1)}°C): ${rangeLabel}`,
           body: `The ${cohort.length} team${cohort.length === 1 ? '' : 's'} with the largest average climate mismatch — ${cohortFloor.toFixed(1)}°C or more — ${cohort.length === 1 ? 'has' : 'have'} scored ${rangeLabel} across their group matches so far. `
             + (maxPts <= 1 ? 'A striking tipping point for climate adaptation.' : 'Results at the extreme end have been more mixed than a clean tipping point would suggest.'),
