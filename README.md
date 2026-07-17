@@ -78,7 +78,7 @@ There's also an **Insights** tab that turns the raw results into analysis: it cr
 * **Climate comfort chart** — a sorted bar for every team showing the average temperature gap between their training base and the venues they played in, coloured blue (close to home) to red (far out of comfort), with qualified teams highlighted
 * **FIFA Seeding chart** — average group-stage points per draw pot, plus "biggest riser" and "biggest faller" spotlight teams, answering whether the December 2025 seeding actually predicted anything; see [FIFA Seeding](#fifa-seeding) for exactly how it's computed
 * **"Core Findings" cards** — five always-visible findings (climate comfort, altitude, timezone fatigue, climate extremes, seeding) computed live from the same data; see [Computed Insights](#computed-insights) for exactly how each one is derived
-* **High-res chart export** — the Climate Comfort, Altitude Factor, Timezone Fatigue, and FIFA Seeding charts can each be exported as a standalone PNG (transparent background) or JPG image at 3x resolution, with an "As of [date]" stamp baked into the image
+* **High-res chart export** — every chart on the Insights tab (Climate Comfort, Altitude Factor, Timezone Fatigue, and both FIFA Seeding charts) can be exported as a standalone PNG (transparent background) or JPG image at 3x resolution, with an "As of [date]" stamp baked into the image
 * **Capacities export** — every computed stat (Core Findings, elevation tiers, seeding pots, and each team's climate/timezone gap) can be copied or downloaded as Capacities-ready markdown, one YAML frontmatter block per item; see [Capacities Export](#capacities-export) for the exact shape
 
 ### Mobile
@@ -176,6 +176,8 @@ The Cloudflare Worker is the one piece of server-side code in the project. It ac
 ```
 App.vue                        – tab navigation, score polling (60s interval),
 │                                 display-toggle state (elevation/timezone/pot)
+├── DisplayToggles.vue         – renders the toggle switches themselves, stacked
+│                                 under the nav tabs in the same toolbar card
 ├── BracketView.vue            – auto-population via bracketProgression.js
 │   └── KnockoutMatch.vue      – score display, winner highlight, pot badge
 ├── ScheduleView.vue           – passes scores + display-toggle props to groups
@@ -184,6 +186,8 @@ App.vue                        – tab navigation, score polling (60s interval),
 └── InsightsView.vue           – computed stats, climate/altitude/timezone/seeding
                                   charts, Core Findings, chart export, Capacities export
 ```
+
+The display-toggle switches live in the same toolbar card as the tab nav (stacked below it with a divider) rather than beside it, deliberately: hiding them on the Insights tab only ever changes the card's height, never its width, so the tab buttons never shift position when you switch tabs.
 
 The computed statistics that drive the Insights tab live in [`src/utils/insights.js`](src/utils/insights.js) (`computeInsights`), which builds group standings and per-team climate/timezone/seeding aggregates from the live scores. The knockout bracket's automatic winner/qualifier propagation lives in [`src/utils/bracketProgression.js`](src/utils/bracketProgression.js) (`deriveAssignments`) — see [Bracket Auto-Population](#bracket-auto-population) below.
 
@@ -256,9 +260,11 @@ Every team's 2026 World Cup draw pot (1 = strongest seed, 4 = weakest) is hardco
 
 The pot badge (`P1` through `P4`) shown before each team name on the Bracket and Schedule tabs, and the FIFA Seeding chart and Core Finding on the Insights tab, all read from this same file — there's no separate, finer-grained numeric ranking used anywhere, deliberately: FIFA's ranking does give a precise 1-48 number for 42 of the 48 teams, but the six playoff qualifiers never had an individual draw-seeding rank of their own, so a full 1-48 list would mean splicing in a different, later ranking snapshot for those six specifically. Pot number is the one figure that's actually complete and official for all 48 teams.
 
+The FIFA Seeding section of the Insights tab has two charts: the 4-bar average-points-per-pot chart described above, and a second per-team table (sortable by Team, Points, or Pot) using the same layout as the Climate Comfort and Timezone Fatigue tables, just with the bar and the sort axis swapped — Points is the bar here, Pot is the thin sortable column, and the bar is coloured by pot rather than by the value it represents, so the seed tier stays visible no matter which column it's sorted by.
+
 ### Chart Image Export
 
-Each of the four Insights charts (Climate Comfort, Altitude Factor, Timezone Fatigue, FIFA Seeding) can be exported as a standalone PNG or JPG via `exportChart()` in [`InsightsView.vue`](src/components/InsightsView.vue), which rasterizes the chart's actual DOM node with [html2canvas](https://html2canvas.hertzen.com/) rather than redrawing it from scratch onto a canvas — these charts are solid colours (plus one simple linear gradient on the timezone bars) with no shadows or filters, so a straight rasterize holds up fine without a second hand-maintained renderer per chart type.
+Each of the five Insights charts (Climate Comfort, Altitude Factor, Timezone Fatigue, and both FIFA Seeding charts) can be exported as a standalone PNG or JPG via `exportChart()` in [`InsightsView.vue`](src/components/InsightsView.vue), which rasterizes the chart's actual DOM node with [html2canvas](https://html2canvas.hertzen.com/) rather than redrawing it from scratch onto a canvas — these charts are solid colours (plus one simple linear gradient on the timezone bars) with no shadows or filters, so a straight rasterize holds up fine without a second hand-maintained renderer per chart type.
 
 Exports render at a fixed 3x scale regardless of the chart's on-screen pixel size, so they hold up outside a browser window (e.g. printed). PNG keeps a real transparent background; JPG gets an explicit opaque background matching the on-screen card colour, since JPEG can't represent transparency at all. Every export also carries a small "As of [date]" line baked into the image itself, so a saved chart still shows when its numbers were current.
 
