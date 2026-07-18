@@ -1124,9 +1124,25 @@ export default {
   -webkit-text-fill-color: transparent;
 }
 
+/* background-clip: text only clips the background of the element it's
+   set on — it doesn't carry down into a nested element's own text, even
+   though -webkit-text-fill-color: transparent does inherit. Without its
+   own background to clip against, the (inherited-transparent) icon span
+   had nothing to fill it with and just vanished. Giving it the same
+   gradient/clip directly is what actually makes it visible again. */
+.col-sort-btn.col-active .sort-icon {
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 .col-right { justify-self: end; }
 
-.sort-icon { font-size: 0.9rem; letter-spacing: 0; line-height: 1; position: relative; top: 0.1em; }
+/* Sits in an align-items:center row with the label text — no manual
+   position nudge needed, and one was actively fighting that centring
+   before. */
+.sort-icon { font-size: 0.9rem; letter-spacing: 0; line-height: 1; }
 
 .cc-colheads {
   display: grid;
