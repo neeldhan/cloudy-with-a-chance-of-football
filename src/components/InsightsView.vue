@@ -1131,6 +1131,11 @@ export default {
    had nothing to fill it with and just vanished. Giving it the same
    gradient/clip directly is what actually makes it visible again. */
 .col-sort-btn.col-active .sort-icon {
+  /* ↑/↓ render noticeably larger than ↕ at the same font-size in most
+     fonts — sized down here so the two states read as the same glyph
+     weight rather than the active one looming over the idle one. */
+  font-size: 0.72rem;
+  top: 0;
   background: var(--gold-grad);
   -webkit-background-clip: text;
   background-clip: text;
@@ -1139,15 +1144,23 @@ export default {
 
 .col-right { justify-self: end; }
 
-/* Sits in an align-items:center row with the label text — no manual
-   position nudge needed, and one was actively fighting that centring
-   before. */
-.sort-icon { font-size: 0.9rem; letter-spacing: 0; line-height: 1; }
+/* ↕ sits in an align-items:center row with the label text, but its own
+   glyph metrics leave visible empty space below it, which still reads
+   as "too high" even though the box itself is centred — nudged down a
+   touch to compensate. Bumped up in size too, since it needs to end up
+   visually close to the (larger-looking) single-arrow active state. */
+.sort-icon {
+  font-size: 1.05rem;
+  letter-spacing: 0;
+  line-height: 1;
+  position: relative;
+  top: 0.07em;
+}
 
 .cc-colheads {
   display: grid;
   grid-template-columns: 160px 1fr 28px;
-  gap: 0.5rem;
+  gap: 0.85rem;
   margin-bottom: 0.3rem;
   padding: 0 0 0.2rem;
   border-bottom: 1px solid rgba(255,255,255,0.06);
@@ -1160,7 +1173,7 @@ export default {
 .cc-row {
   display: grid;
   grid-template-columns: 160px 1fr 28px;
-  gap: 0.5rem;
+  gap: 0.85rem;
   align-items: center;
   padding: 0.15rem 0;
 }
