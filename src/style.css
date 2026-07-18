@@ -254,6 +254,47 @@ h1 {
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
+/* display:contents on desktop means this wrapper adds no box of its own
+   — the three buttons act as direct flex children of .nav-tabs, same as
+   if the wrapper weren't there at all. Below the mobile breakpoint this
+   switches to a real flex column instead, which is what lets the exact
+   same markup serve as both the desktop pill and the mobile dropdown. */
+.nav-tabs-inner {
+  display: contents;
+}
+
+/* Hamburger — hidden entirely above the mobile breakpoint. */
+.nav-menu-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.nav-menu-bar {
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--text-primary);
+  transition: transform 0.3s ease, opacity 0.2s ease;
+}
+
+/* Morphs the three bars into an X rather than swapping to a separate
+   icon — a continuous shape change reads as more deliberate than a
+   hard cut between two unrelated glyphs. */
+.nav-menu-toggle.open .nav-menu-bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-menu-toggle.open .nav-menu-bar:nth-child(2) { opacity: 0; }
+.nav-menu-toggle.open .nav-menu-bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
 .tab-button {
   border: none;
   background: transparent;
@@ -926,8 +967,42 @@ h1 {
 /* ── Responsive ── */
 
 @media (max-width: 768px) {
-  .top-nav { justify-content: center; padding: 1.4rem 1rem 0; }
+  /* Logo top-left, hamburger top-right, dropdown menu on its own row
+     below both — replaces the old centred/wrapping nav pill, which was
+     spilling onto two lines and sitting flush against the card edges. */
+  .top-nav { justify-content: space-between; padding: 1.4rem 1rem 0; }
   .nav-mark-title { font-size: 1.05rem; }
+  .nav-menu-toggle { display: flex; }
+
+  .nav-tabs {
+    order: 3;
+    flex-basis: 100%;
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.35s ease;
+    margin-top: 0.85rem;
+    padding: 0;
+    background: var(--glass-bg);
+  }
+
+  .nav-tabs.open {
+    grid-template-rows: 1fr;
+  }
+
+  .nav-tabs-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    overflow: hidden;
+    min-height: 0;
+    padding: 0.5rem;
+  }
+
+  .nav-tabs .tab-button {
+    width: 100%;
+    text-align: left;
+    padding: 0.75rem 1rem;
+  }
   /* Title shrinks on mobile but the eyebrow above it didn't scale down
      to match, so it ended up visibly wider than "Heat Bracket" below
      it — scaled down by the same ratio here. */
@@ -947,7 +1022,7 @@ h1 {
      is meant to avoid. */
   .display-toggles {
     row-gap: 0.75rem;
-    column-gap: 0.5rem;
+    column-gap: 0.35rem;
   }
 
   .display-toggles-label {
@@ -973,21 +1048,36 @@ h1 {
     display: none;
   }
 
-  /* Switches only, sized down a bit from desktop — labels stay full
-     size/text since they already fit fine. Same 1.45:1 knob proportions
-     and 2px inset as desktop, just scaled down, so it still reads as
-     the same switch rather than a different style. */
+  /* "They already fit fine" turned out not to hold at narrower phone
+     widths (393px) — three full-size switches plus "FIFA Seeding"
+     spelled out don't fit on one line there. Shrinking the switches a
+     bit further, tightening the label text/tracking, and shortening
+     "FIFA Seeding" to "Seeding" again is what actually gets all three
+     on one row without wrapping. Same 1.45:1 knob proportions and 2px
+     inset as desktop throughout, just scaled down. */
   .ios-switch {
-    width: 48px;
-    height: 24px;
+    width: 40px;
+    height: 22px;
   }
 
   .ios-switch-knob {
-    width: 28px;
-    height: 20px;
+    width: 23px;
+    height: 18px;
   }
 
   .ios-switch.on .ios-switch-knob {
-    transform: translateX(16px);
+    transform: translateX(13px);
   }
+
+  .switch-row {
+    gap: 0.3rem;
+  }
+
+  .switch-label {
+    font-size: 0.56rem;
+    letter-spacing: 0.04em;
+  }
+
+  .switch-label-full { display: none; }
+  .switch-label-short { display: inline; }
 }

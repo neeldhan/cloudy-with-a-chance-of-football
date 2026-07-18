@@ -12,22 +12,37 @@
         <span class="nav-mark-title">Heat Bracket</span>
       </span>
     </div>
-    <div class="nav-tabs">
-      <button
-        class="tab-button"
-        :class="{ active: activeTab === 'bracket' }"
-        @click="activeTab = 'bracket'"
-      >Knockout Bracket</button>
-      <button
-        class="tab-button"
-        :class="{ active: activeTab === 'schedule' }"
-        @click="activeTab = 'schedule'"
-      >Group Stage Schedule</button>
-      <button
-        class="tab-button"
-        :class="{ active: activeTab === 'insights' }"
-        @click="activeTab = 'insights'"
-      >Insights</button>
+
+    <button
+      class="nav-menu-toggle"
+      :class="{ open: mobileMenuOpen }"
+      :aria-expanded="mobileMenuOpen"
+      aria-label="Menu"
+      @click="mobileMenuOpen = !mobileMenuOpen"
+    >
+      <span class="nav-menu-bar"></span>
+      <span class="nav-menu-bar"></span>
+      <span class="nav-menu-bar"></span>
+    </button>
+
+    <div class="nav-tabs" :class="{ open: mobileMenuOpen }">
+      <div class="nav-tabs-inner">
+        <button
+          class="tab-button"
+          :class="{ active: activeTab === 'bracket' }"
+          @click="selectTab('bracket')"
+        >Knockout Bracket</button>
+        <button
+          class="tab-button"
+          :class="{ active: activeTab === 'schedule' }"
+          @click="selectTab('schedule')"
+        >Group Stage Schedule</button>
+        <button
+          class="tab-button"
+          :class="{ active: activeTab === 'insights' }"
+          @click="selectTab('insights')"
+        >Insights</button>
+      </div>
     </div>
   </nav>
 
@@ -71,6 +86,9 @@ export default {
       showElevation: true,
       showTimezone:  true,
       showPot:       true,
+      // Only actually used below the mobile breakpoint — .nav-tabs is a
+      // static inline pill on desktop regardless of this value.
+      mobileMenuOpen: false,
     }
   },
 
@@ -89,11 +107,13 @@ export default {
     }
 
     document.addEventListener('mousemove', this.handleShineMove)
+    document.addEventListener('click', this.handleOutsideMenuClick)
   },
 
   beforeUnmount() {
     clearInterval(this._scoreTimer)
     document.removeEventListener('mousemove', this.handleShineMove)
+    document.removeEventListener('click', this.handleOutsideMenuClick)
   },
 
   methods: {
@@ -102,6 +122,20 @@ export default {
         const res = await fetch(SCORES_URL)
         if (res.ok) this.scores = await res.json()
       } catch { /* network error — keep showing last known scores */ }
+    },
+
+    selectTab(tab) {
+      this.activeTab = tab
+      this.mobileMenuOpen = false
+    },
+
+    // Tapping anywhere outside the open mobile menu (or its toggle button)
+    // closes it — mirrors the same closest()-based pattern the export
+    // dropdowns in InsightsView.vue already use.
+    handleOutsideMenuClick(e) {
+      if (this.mobileMenuOpen && !e.target.closest('.nav-tabs') && !e.target.closest('.nav-menu-toggle')) {
+        this.mobileMenuOpen = false
+      }
     },
 
     // Cursor-tracking shine on any .shine card: a single delegated listener
