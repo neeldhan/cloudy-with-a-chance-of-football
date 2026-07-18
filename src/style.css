@@ -182,6 +182,10 @@ h1 {
    centred inside. */
 
 .top-nav {
+  /* Anchors the mobile dropdown menu's absolute positioning — no effect
+     on desktop layout, .nav-tabs only switches to position:absolute
+     below the mobile breakpoint. */
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -278,6 +282,13 @@ h1 {
   border-radius: 12px;
   cursor: pointer;
   padding: 0;
+  outline: none;
+}
+
+/* Custom focus ring instead of the browser default blue one, which
+   looked out of place against the gold/glass palette. */
+.nav-menu-toggle:focus-visible {
+  box-shadow: 0 0 0 2px rgba(244, 211, 94, 0.55);
 }
 
 .nav-menu-bar {
@@ -974,34 +985,67 @@ h1 {
   .nav-mark-title { font-size: 1.05rem; }
   .nav-menu-toggle { display: flex; }
 
+  /* A floating card that emerges from the hamburger button itself,
+     iOS-style — not a full-width row pushed into the document flow.
+     position:absolute takes it out of flow entirely (so there's no
+     leftover sliver when "closed" the way the previous grid-rows
+     approach left one), anchored to the top-right corner right under
+     the button via transform-origin, and it scales/fades in from that
+     corner rather than sliding the whole page down. */
   .nav-tabs {
-    order: 3;
-    flex-basis: 100%;
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows 0.35s ease;
-    margin-top: 0.85rem;
-    padding: 0;
-    background: var(--glass-bg);
+    position: absolute;
+    top: calc(100% + 0.6rem);
+    right: 0;
+    width: 230px;
+    z-index: 50;
+    display: block;
+    padding: 0.4rem;
+    background: rgba(20, 18, 24, 0.75);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 18px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+    transform-origin: top right;
+    transform: scale(0.85) translateY(-6px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
   }
 
   .nav-tabs.open {
-    grid-template-rows: 1fr;
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .nav-tabs-inner {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
-    overflow: hidden;
-    min-height: 0;
-    padding: 0.5rem;
   }
 
   .nav-tabs .tab-button {
     width: 100%;
     text-align: left;
-    padding: 0.75rem 1rem;
+    padding: 0.8rem 0.9rem;
+    border-radius: 12px;
+  }
+
+  .nav-tabs .tab-button:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* The solid gold pill from the desktop version reads as too heavy
+     stacked in a vertical list — a quiet tint plus gold text instead,
+     closer to how iOS itself marks a selected row in a menu like this. */
+  .nav-tabs .tab-button.active {
+    background: rgba(244, 211, 94, 0.12);
+    color: #f4d35e;
+    box-shadow: none;
+  }
+
+  .nav-tabs .tab-button.active::after {
+    display: none;
   }
   /* Title shrinks on mobile but the eyebrow above it didn't scale down
      to match, so it ended up visibly wider than "Heat Bracket" below
