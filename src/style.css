@@ -17,8 +17,8 @@
   --text-secondary: rgba(243, 237, 225, 0.55);
   --text-tertiary:  rgba(243, 237, 225, 0.38);
 
-  --gold-grad:      linear-gradient(135deg, #fff6d8, #f4d35e 45%, #d4af37);
-  --gold-grad-deep: linear-gradient(135deg, #f4d35e, #d4af37 60%, #a3811f);
+  --gold-grad:      linear-gradient(135deg, #d4af37, #f4d35e 55%, #fff6d8);
+  --gold-grad-deep: linear-gradient(135deg, #a3811f, #d4af37 40%, #f4d35e);
 
   --glass-bg:        rgba(255, 255, 255, 0.035);
   --glass-bg-strong: rgba(255, 255, 255, 0.05);
@@ -557,7 +557,7 @@ h1 {
 .bracket::-webkit-scrollbar-thumb  { background: rgba(255,255,255,0.25); border-radius: 999px; }
 
 .round {
-  min-width: 340px;
+  min-width: 380px;
   scroll-snap-align: start;
 }
 
@@ -802,7 +802,7 @@ h1 {
 }
 
 .team-col-name {
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   font-weight: 700;
   max-width: 100%;
   overflow: hidden;
@@ -976,8 +976,9 @@ h1 {
 
 .schedule-grid {
   display: grid;
-  /* Same 340px minimum as .round in the bracket, so group and knockout
-     cards render at the same width instead of group's being narrower. */
+  /* Kept narrower than .round's 380px in the bracket on purpose — 340px
+     fits more columns per row here, and the bracket's extra width was
+     specifically for the bracket, not this grid. */
   grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
   column-gap: 1rem;
   /* Vertical spacing between cards comes entirely from .match's own
@@ -1114,7 +1115,7 @@ h1 {
      room to show real information (team names, temps) instead of
      truncating everything, and the bracket already scrolls horizontally,
      so it's fine for the next round to only be partly visible. */
-  .round      { min-width: 340px; }
+  .round      { min-width: 380px; }
   .schedule-grid { grid-template-columns: 1fr; }
 
   /* "DISPLAY" gets its own full-width row with a divider line on each

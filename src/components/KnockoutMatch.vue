@@ -242,7 +242,7 @@ export default {
       const climate = team ? TRAINING_CLIMATE[team] : null
       const hostElev = HOST_CITY_ELEVATION[this.match.city]
       if (!climate || climate.elevM == null || hostElev == null) return null
-      const diff = hostElev - climate.elevM
+      const diff = climate.elevM - hostElev
       return {
         city: climate.city,
         elevM: climate.elevM,
