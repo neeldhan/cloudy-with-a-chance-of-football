@@ -922,6 +922,56 @@ h1 {
   margin: 0 0.15rem;
 }
 
+/* Training-base elevation readout ("Oslo · 23m (-21m)") as its own glass
+   chip, icon beside a fixed two-line stack (city name, then elevation +
+   delta) rather than one long inline string — a single line was wrapping
+   unpredictably (city names range from "Oslo" to "Clairefontaine-en-
+   Yvelines"), landing the pill at 2 or 3 uneven lines depending on the
+   team. Pinning it to exactly two lines, and ellipsis-truncating just the
+   city name (full name still available via the title attribute) keeps
+   every card's badge the same shape regardless of which team it's for. */
+.elevation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 0.2rem 0.5rem;
+  max-width: 100%;
+}
+
+.elevation-badge .meta-icon {
+  margin-top: 0;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
+.elevation-badge-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.elevation-badge-city {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.elevation-badge-num {
+  font-size: 0.58rem;
+  opacity: 0.7;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Group stage schedule ── */
 
 .schedule-grid {

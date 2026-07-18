@@ -25,6 +25,13 @@
         </div>
         <div class="team-col-name" :class="{ 'name-winner': showHomeWinner }" :title="nameFor(match.home)">{{ nameFor(match.home) }}</div>
         <div v-if="climateLine(match.home)" class="team-col-climate has-temp" :style="climateStyle(match.home)">{{ climateLine(match.home) }}</div>
+        <div v-if="elevationInfo(match.home)" class="elevation-badge" :title="elevationInfo(match.home).city">
+          <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20 L9 8 L13 14 L16 9 L21 20 Z"/></svg>
+          <span class="elevation-badge-lines">
+            <span class="elevation-badge-city">{{ elevationInfo(match.home).city }}</span>
+            <span class="elevation-badge-num">{{ elevationInfo(match.home).elevM.toLocaleString('en-US') }}m ({{ elevationInfo(match.home).diffLabel }})</span>
+          </span>
+        </div>
       </div>
 
       <div class="match-score-mid" :class="{ 'score-vs': !matchScore }">
@@ -44,6 +51,13 @@
         </div>
         <div class="team-col-name" :class="{ 'name-winner': showAwayWinner }" :title="nameFor(match.away)">{{ nameFor(match.away) }}</div>
         <div v-if="climateLine(match.away)" class="team-col-climate has-temp" :style="climateStyle(match.away)">{{ climateLine(match.away) }}</div>
+        <div v-if="elevationInfo(match.away)" class="elevation-badge" :title="elevationInfo(match.away).city">
+          <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20 L9 8 L13 14 L16 9 L21 20 Z"/></svg>
+          <span class="elevation-badge-lines">
+            <span class="elevation-badge-city">{{ elevationInfo(match.away).city }}</span>
+            <span class="elevation-badge-num">{{ elevationInfo(match.away).elevM.toLocaleString('en-US') }}m ({{ elevationInfo(match.away).diffLabel }})</span>
+          </span>
+        </div>
       </div>
     </div>
 
@@ -214,6 +228,26 @@ export default {
       if (climate && tzStr) return `${climate.tempC}°C · ${tzStr}`
       if (climate) return `${climate.tempC}°C`
       return tzStr || null
+    },
+
+    // This team's own training-base elevation versus the venue's — issue
+    // #13. Its own pill (mountain icon, matching the venue elevation chip
+    // above) rather than folded into climateLine, since "city name +
+    // elevation + delta" is a lot to cram into a pill that's already
+    // carrying temperature and timezone. Null whenever the toggle is off
+    // or either elevation is unknown.
+    elevationInfo(slot) {
+      if (!this.showElevation) return null
+      const team = this.assignments[slot]
+      const climate = team ? TRAINING_CLIMATE[team] : null
+      const hostElev = HOST_CITY_ELEVATION[this.match.city]
+      if (!climate || climate.elevM == null || hostElev == null) return null
+      const diff = hostElev - climate.elevM
+      return {
+        city: climate.city,
+        elevM: climate.elevM,
+        diffLabel: diff === 0 ? '±0m' : `${diff > 0 ? '+' : ''}${diff.toLocaleString('en-US')}m`,
+      }
     },
 
     climateStyle(slot) {
