@@ -17,7 +17,11 @@
           <div v-if="flagFor(match.home)" class="team-flag" :style="flagStyle(match.home)"></div>
           <span v-else class="team-crest-fallback">{{ initials(match.home) }}</span>
         </div>
-        <div v-if="potFor(match.home)" class="pot-badge">P{{ potFor(match.home) }}</div>
+        <div v-if="potFor(match.home) || rankFor(match.home)" class="pot-badge">
+          <template v-if="potFor(match.home)">P{{ potFor(match.home) }}</template>
+          <span v-if="potFor(match.home) && rankFor(match.home)" class="badge-dot">·</span>
+          <template v-if="rankFor(match.home)">#{{ rankFor(match.home) }}</template>
+        </div>
         <div class="team-col-name" :class="{ 'name-winner': showHomeWinner }" :title="match.home">{{ match.home }}</div>
         <div v-if="climateLine(match.home)" class="team-col-climate has-temp" :style="climateStyle(match.home)">{{ climateLine(match.home) }}</div>
       </div>
@@ -32,7 +36,11 @@
           <div v-if="flagFor(match.away)" class="team-flag" :style="flagStyle(match.away)"></div>
           <span v-else class="team-crest-fallback">{{ initials(match.away) }}</span>
         </div>
-        <div v-if="potFor(match.away)" class="pot-badge">P{{ potFor(match.away) }}</div>
+        <div v-if="potFor(match.away) || rankFor(match.away)" class="pot-badge">
+          <template v-if="potFor(match.away)">P{{ potFor(match.away) }}</template>
+          <span v-if="potFor(match.away) && rankFor(match.away)" class="badge-dot">·</span>
+          <template v-if="rankFor(match.away)">#{{ rankFor(match.away) }}</template>
+        </div>
         <div class="team-col-name" :class="{ 'name-winner': showAwayWinner }" :title="match.away">{{ match.away }}</div>
         <div v-if="climateLine(match.away)" class="team-col-climate has-temp" :style="climateStyle(match.away)">{{ climateLine(match.away) }}</div>
       </div>
@@ -61,6 +69,7 @@ import { TRAINING_CLIMATE, HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS, HOST_CITY_ELE
 import { tempToColor, isPastDate, tzDiffHours } from '../utils/temperature.js'
 import { shouldFetchLiveTemp, fetchLiveTemp } from '../utils/openMeteo.js'
 import { teamPot } from '../data/seeding.js'
+import { teamRank } from '../data/rankings.js'
 import { flagUrl } from '../data/teamFlags.js'
 
 export default {
@@ -142,6 +151,10 @@ export default {
 
     potFor(name) {
       return this.showPot ? teamPot(name) : null
+    },
+
+    rankFor(name) {
+      return this.showPot ? teamRank(name) : null
     },
 
     flagFor(name) {

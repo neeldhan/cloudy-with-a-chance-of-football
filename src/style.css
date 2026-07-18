@@ -914,6 +914,14 @@ h1 {
   border-radius: 999px;
 }
 
+/* Pot and rank share one .pot-badge chip ("P1 · #32") rather than two
+   separate bubbles — .badge-dot dims itself relative to the pot number
+   so the chip still reads pot first, rank second. */
+.badge-dot {
+  opacity: 0.6;
+  margin: 0 0.15rem;
+}
+
 /* ── Group stage schedule ── */
 
 .schedule-grid {

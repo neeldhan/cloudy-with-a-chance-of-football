@@ -4,6 +4,7 @@ import {
   HOST_CITY_ELEVATION, TEAM_TIMEZONE, HOST_CITY_TIMEZONE,
 } from '../data/climate.js'
 import { TEAM_POT }     from '../data/seeding.js'
+import { TEAM_RANK }    from '../data/rankings.js'
 import { tzDiffHours } from './temperature.js'
 
 // A team counts as playing in "comfortable" conditions for a given match if
@@ -126,6 +127,7 @@ export function computeInsights(scores) {
             name: team, P: 0, W: 0, D: 0, L: 0, GF: 0, GA: 0,
             deltas: [], tzAbsDiffs: [], qualified: qualifiers.has(team), trainTemp: trainT,
             pot: TEAM_POT[team] ?? null,
+            rank: TEAM_RANK[team] ?? null,
           }
         }
         const ts = teamMap[team]

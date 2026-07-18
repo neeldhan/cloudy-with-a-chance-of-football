@@ -284,16 +284,17 @@
         </div>
 
         <div class="climate-chart" ref="seedTeamChart">
-          <p class="elev-chart-title">Every team, by points and pot</p>
-          <div class="cc-colheads">
+          <p class="elev-chart-title">Every team, by points, pot and current FIFA rank</p>
+          <div class="cc-colheads seed-colheads">
             <button class="col-sort-btn" :class="{ 'col-active': seedSort.key === 'name' }" @click="setSort(seedSort, 'name')">Team <span class="sort-icon">{{ sortIcon(seedSort, 'name') }}</span></button>
             <button class="col-sort-btn" :class="{ 'col-active': seedSort.key === 'P' }" @click="setSort(seedSort, 'P')">Points <span class="sort-icon">{{ sortIcon(seedSort, 'P') }}</span></button>
             <button class="col-sort-btn col-right" :class="{ 'col-active': seedSort.key === 'pot' }" @click="setSort(seedSort, 'pot')">Pot <span class="sort-icon">{{ sortIcon(seedSort, 'pot') }}</span></button>
+            <button class="col-sort-btn col-right" :class="{ 'col-active': seedSort.key === 'rank' }" @click="setSort(seedSort, 'rank')">Rank <span class="sort-icon">{{ sortIcon(seedSort, 'rank') }}</span></button>
           </div>
           <div
             v-for="team in sortedSeed"
             :key="team.name"
-            class="cc-row"
+            class="cc-row seed-row"
           >
             <div class="cc-name" :class="{ 'cc-qualified': team.qualified }">{{ team.name }}</div>
             <div class="cc-track" :style="{ '--bw': Math.min(Math.max(team.P / 9 * 100, 2), 100) + '%' }">
@@ -301,6 +302,7 @@
               <span class="cc-delta">{{ ptsLabel(team.P) }}</span>
             </div>
             <div class="cc-pts" :style="{ color: potColor(team.pot) }">{{ team.pot ?? '—' }}</div>
+            <div class="cc-pts" :class="rankClass(team.rank)">{{ team.rank ? '#' + team.rank : '—' }}</div>
           </div>
           <p class="chart-asof">As of {{ asOfDate }}.</p>
         </div>
@@ -578,12 +580,25 @@ export default {
       return 'pts-0'
     },
 
+    // Same green-to-grey scale as ptsClass(), reused for the FIFA Seeding
+    // table's Rank column — a low rank number is the "good" end here
+    // (world #1 vs world #88), so the thresholds run in the opposite
+    // direction from points. Bands are sized to the actual 48-team field
+    // (ranks 1-88), not a even split of the 1-211 full FIFA table.
+    rankClass(rank) {
+      if (rank == null) return 'pts-0'
+      if (rank <= 10) return 'pts-9'
+      if (rank <= 25) return 'pts-7'
+      if (rank <= 45) return 'pts-4'
+      if (rank <= 65) return 'pts-1'
+      return 'pts-0'
+    },
+
     // "Core Findings" cards — always-visible curated analysis, now computed
     // from live headline stats instead of a fixed launch-day snapshot.
     permanentInsights() {
       if (!this.insights) return []
       const { headlines, comfortThreshold, teamsByDelta, potTiers } = this.insights
-      const findings = []
 
       const comfortRatio = headlines.discomfortWinPct > 0
         ? headlines.comfortWinPct / headlines.discomfortWinPct
@@ -596,30 +611,13 @@ export default {
         : comfortRatio >= 1
           ? ` — a ${comfortRatio.toFixed(2)}× advantage across the 48-team field.`
           : ` — a ${(1 / comfortRatio).toFixed(2)}× disadvantage across the 48-team field.`
-      findings.push({
-        tag: 'Finding',
+      const climateComfort = {
+        tag: 'Climate Finding',
         team: 'Climate Comfort Boosts Win Rate',
         stat: `${headlines.comfortWinPct.toFixed(0)}% vs. ${headlines.discomfortWinPct.toFixed(0)}% win rate`,
         body: `Teams playing within ${comfortThreshold}°C of their home training temperature have won ${headlines.comfortWinPct.toFixed(0)}% of individual match sides, versus ${headlines.discomfortWinPct.toFixed(0)}% for teams in more alien conditions`
           + comfortSuffix,
-      })
-
-      // Guadalajara (1,566m) sits in the "mid" elevation tier, Mexico City
-      // (2,240m) in "high" — see ELEV_TIERS in utils/insights.js.
-      findings.push({
-        tag: 'Finding',
-        team: 'Altitude Suppresses Scoring',
-        stat: `${headlines.midAltGoals.toFixed(2)} gpg vs. ${headlines.seaLevelGoals.toFixed(2)} at sea level`,
-        body: `Guadalajara (1,566m) has averaged ${headlines.midAltGoals.toFixed(2)} goals per game so far, versus ${headlines.seaLevelGoals.toFixed(2)} at sea-level venues. Mexico City, at 2,240m, is the highest World Cup venue in history — averaging ${headlines.highAltGoals.toFixed(2)} goals per game there.`,
-      })
-
-      const tzGap = Math.abs(headlines.tzQualifiedAvg - headlines.tzEliminatedAvg)
-      findings.push({
-        tag: 'Finding',
-        team: 'Timezone Fatigue Tracks With Elimination',
-        stat: `Qualifiers avg ${headlines.tzQualifiedAvg.toFixed(1)}h · Eliminated avg ${headlines.tzEliminatedAvg.toFixed(1)}h`,
-        body: `Teams that have advanced from the group stage have averaged ${headlines.tzQualifiedAvg.toFixed(1)}h of timezone adjustment per match, versus ${headlines.tzEliminatedAvg.toFixed(1)}h for eliminated sides — a ${tzGap.toFixed(1)}h gap between the two groups.`,
-      })
+      }
 
       // The top quartile by climate gap, rather than a fixed °C cutoff. A
       // hardcoded threshold (e.g. ">15°C") can go quiet early in the
@@ -631,19 +629,37 @@ export default {
       const byGapDesc  = [...teamsByDelta].sort((a, b) => b.avgDelta - a.avgDelta)
       const cohortSize = Math.max(1, Math.ceil(byGapDesc.length * 0.25))
       const cohort      = byGapDesc.slice(0, cohortSize)
+      let climateExtremes = null
       if (cohort.length > 0) {
         const cohortFloor = cohort[cohort.length - 1].avgDelta
         const pts    = cohort.map(t => t.P)
         const maxPts = Math.max(...pts)
         const minPts = Math.min(...pts)
         const rangeLabel = minPts === maxPts ? this.ptsLabel(maxPts) : `${minPts}–${maxPts} points`
-        findings.push({
-          tag: 'Finding',
+        climateExtremes = {
+          tag: 'Climate Finding',
           team: maxPts <= 1 ? 'Climate Extremes Sink Group Stage Hopes' : "Climate Extremes Don't Guarantee Elimination",
           stat: `Worst ${cohort.length} gap${cohort.length === 1 ? '' : 's'} (≥${cohortFloor.toFixed(1)}°C): ${rangeLabel}`,
           body: `The ${cohort.length} team${cohort.length === 1 ? '' : 's'} with the largest average climate mismatch — ${cohortFloor.toFixed(1)}°C or more — ${cohort.length === 1 ? 'has' : 'have'} scored ${rangeLabel} across their group matches so far. `
             + (maxPts <= 1 ? 'A striking tipping point for climate adaptation.' : 'Results at the extreme end have been more mixed than a clean tipping point would suggest.'),
-        })
+        }
+      }
+
+      // Guadalajara (1,566m) sits in the "mid" elevation tier, Mexico City
+      // (2,240m) in "high" — see ELEV_TIERS in utils/insights.js.
+      const altitude = {
+        tag: 'Elevation Finding',
+        team: 'Altitude Suppresses Scoring',
+        stat: `${headlines.midAltGoals.toFixed(2)} gpg vs. ${headlines.seaLevelGoals.toFixed(2)} at sea level`,
+        body: `Guadalajara (1,566m) has averaged ${headlines.midAltGoals.toFixed(2)} goals per game so far, versus ${headlines.seaLevelGoals.toFixed(2)} at sea-level venues. Mexico City, at 2,240m, is the highest World Cup venue in history — averaging ${headlines.highAltGoals.toFixed(2)} goals per game there.`,
+      }
+
+      const tzGap = Math.abs(headlines.tzQualifiedAvg - headlines.tzEliminatedAvg)
+      const timezone = {
+        tag: 'Timezone Finding',
+        team: 'Timezone Fatigue Tracks With Elimination',
+        stat: `Qualifiers avg ${headlines.tzQualifiedAvg.toFixed(1)}h · Eliminated avg ${headlines.tzEliminatedAvg.toFixed(1)}h`,
+        body: `Teams that have advanced from the group stage have averaged ${headlines.tzQualifiedAvg.toFixed(1)}h of timezone adjustment per match, versus ${headlines.tzEliminatedAvg.toFixed(1)}h for eliminated sides — a ${tzGap.toFixed(1)}h gap between the two groups.`,
       }
 
       // Pot 1 (strongest seed) vs. Pot 4 (weakest) average points — the
@@ -651,20 +667,54 @@ export default {
       // predicted anything. Skipped until both pots have at least one
       // finished match, same divide-by-zero guard as Climate Comfort above.
       const pot1 = potTiers[0], pot4 = potTiers[3]
+      let seedingHoldsUp = null
       if (pot1.teamCount > 0 && pot4.teamCount > 0) {
         const seedGap = pot1.avgPoints - pot4.avgPoints
-        findings.push({
-          tag: 'Finding',
+        seedingHoldsUp = {
+          tag: 'Seeding Finding',
           team: 'Seeding Holds Up',
           stat: `Pot 1 avg ${pot1.avgPoints.toFixed(1)} pts vs. Pot 4 avg ${pot4.avgPoints.toFixed(1)} pts`,
           body: `Teams from Pot 1, the strongest seeds in December's draw, have averaged ${pot1.avgPoints.toFixed(1)} group-stage points so far, versus ${pot4.avgPoints.toFixed(1)} for Pot 4. `
             + (seedGap > 0
               ? `A ${seedGap.toFixed(1)}-point gap in the seeds' favour — the draw pots have been a reasonable predictor of who'd do well.`
               : `Pot 4 is actually ahead by ${Math.abs(seedGap).toFixed(1)} points, which is the opposite of what the seeding would suggest.`),
-        })
+        }
       }
 
-      return findings
+      // Current FIFA World Ranking (updated 11 June 2026, reflecting recent
+      // form) split into the best- and worst-ranked quartiles of the
+      // 48-team field, each averaged for group-stage points. This is the
+      // live-signal counterpart to "Seeding Holds Up" above, which only
+      // checks the frozen December 2025 draw pot — same question ("does
+      // the pre-tournament signal predict results?"), asked of the number
+      // that's kept updating through the tournament instead of the one
+      // locked in at the draw.
+      const rankedTeams = [...teamsByDelta].filter(t => t.rank != null).sort((a, b) => a.rank - b.rank)
+      const rankQuartile = Math.max(1, Math.floor(rankedTeams.length / 4))
+      const topRanked    = rankedTeams.slice(0, rankQuartile)
+      const bottomRanked = rankedTeams.slice(-rankQuartile)
+      let currentRanking = null
+      if (topRanked.length > 0 && bottomRanked.length > 0) {
+        const avgPts = arr => arr.reduce((sum, t) => sum + t.P, 0) / arr.length
+        const topAvg = avgPts(topRanked)
+        const bottomAvg = avgPts(bottomRanked)
+        const rankGap = topAvg - bottomAvg
+        currentRanking = {
+          tag: 'Seeding Finding',
+          team: 'Current Ranking Also Predicts Results',
+          stat: `Top ${topRanked.length} ranked avg ${topAvg.toFixed(1)} pts vs. bottom ${bottomRanked.length} avg ${bottomAvg.toFixed(1)} pts`,
+          body: `The ${topRanked.length} teams currently ranked highest in the FIFA World Ranking have averaged ${topAvg.toFixed(1)} group-stage points so far, versus ${bottomAvg.toFixed(1)} for the ${bottomRanked.length} lowest-ranked teams in the 48-team field. `
+            + (rankGap > 0
+              ? `A ${rankGap.toFixed(1)}-point gap in the higher-ranked teams' favour — form and world ranking have tracked results about as well as the draw pots did.`
+              : `The lower-ranked group is actually ahead by ${Math.abs(rankGap).toFixed(1)} points, the opposite of what current form would suggest.`),
+        }
+      }
+
+      // Grouped by category (Climate, Elevation, Timezone, Seeding) rather
+      // than computation order, so the 2-column grid below reads as
+      // same-topic pairs instead of a shuffled deck.
+      return [climateComfort, climateExtremes, altitude, timezone, seedingHoldsUp, currentRanking]
+        .filter(Boolean)
     },
 
     // Opens/closes a chart's "Export ▾" dropdown. Only one menu is ever open
@@ -1178,6 +1228,15 @@ export default {
   padding: 0.15rem 0;
 }
 
+/* FIFA Seeding table only, adds a 4th Rank column onto the shared
+   3-column .cc-colheads/.cc-row grid used by Climate Comfort — kept as a
+   modifier rather than changing the shared rule so Climate Comfort's own
+   3-column layout is untouched. */
+.cc-colheads.seed-colheads,
+.cc-row.seed-row {
+  grid-template-columns: 160px 1fr 34px 44px;
+}
+
 .cc-name {
   font-size: 0.78rem;
   white-space: nowrap;
@@ -1468,6 +1527,7 @@ export default {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  margin-bottom: 0.3rem;
 }
 
 .story-team {
@@ -1503,6 +1563,8 @@ export default {
 
   .cc-colheads,
   .cc-row         { grid-template-columns: 120px 1fr 24px; }
+  .cc-colheads.seed-colheads,
+  .cc-row.seed-row { grid-template-columns: 120px 1fr 28px 38px; }
   /* header row must match the data rows so columns line up */
   .tz-colheads,
   .tz-row         { grid-template-columns: 120px 1fr 32px 26px; }
