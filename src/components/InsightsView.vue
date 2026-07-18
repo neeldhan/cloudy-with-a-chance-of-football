@@ -1327,8 +1327,11 @@ export default {
   margin-top: 0.5rem;
 }
 
+/* Same treatment as .story — rounder than the original 6px to echo the
+   parent .ins-section's corners instead of reading sharp/flat next to
+   it. */
 .tz-call {
-  border-radius: 6px;
+  border-radius: 14px;
   padding: 0.75rem 0.85rem;
   border: 1px solid transparent;
 }
