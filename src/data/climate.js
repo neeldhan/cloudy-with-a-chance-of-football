@@ -131,6 +131,50 @@ export const HOST_CITY_ELEVATION = {
   'Miami, USA':                     2,
 }
 
+// Every host city's own venue. bracket.js already carries the stadium for
+// each knockout match inline (a given city only ever hosts one stadium in
+// this tournament, so there's no need for this map there too), but the
+// group stage's schedule data only has city, not stadium, so GroupMatch.vue
+// reads it from here. Guadalajara only hosts group matches, not knockout
+// ones, so its stadium didn't already exist anywhere in the codebase; used
+// its real name (Estadio Akron) rather than FIFA's neutral tournament
+// rebrand ("Estadio Guadalajara"), matching how every other venue here
+// keeps its actual name (SoFi Stadium, AT&T Stadium, etc.) instead of a
+// sponsor-stripped one.
+export const HOST_CITY_STADIUM = {
+  'Mexico City':                 'Estadio Azteca',
+  'Mexico City, Mexico':         'Estadio Azteca',
+  'Guadalajara':                 'Estadio Akron',
+  'Monterrey':                   'Estadio BBVA',
+  'Monterrey, Mexico':           'Estadio BBVA',
+  'Atlanta':                     'Mercedes-Benz Stadium',
+  'Atlanta, USA':                'Mercedes-Benz Stadium',
+  'Kansas City':                 'GEHA Field at Arrowhead Stadium',
+  'Kansas City, USA':            'GEHA Field at Arrowhead Stadium',
+  'Dallas':                      'AT&T Stadium',
+  'Dallas, USA':                 'AT&T Stadium',
+  'Toronto':                     'BMO Field',
+  'Toronto, Canada':             'BMO Field',
+  'Los Angeles':                 'SoFi Stadium',
+  'Los Angeles, USA':            'SoFi Stadium',
+  'Vancouver':                   'BC Place',
+  'Vancouver, Canada':           'BC Place',
+  'Seattle':                     'Lumen Field',
+  'Seattle, USA':                'Lumen Field',
+  'Houston':                     'NRG Stadium',
+  'Houston, USA':                'NRG Stadium',
+  'San Francisco':               "Levi's Stadium",
+  'San Francisco Bay Area, USA': "Levi's Stadium",
+  'Boston':                      'Gillette Stadium',
+  'Boston, USA':                 'Gillette Stadium',
+  'Philadelphia':                'Lincoln Financial Field',
+  'Philadelphia, USA':           'Lincoln Financial Field',
+  'New York/New Jersey':         'MetLife Stadium',
+  'New York/New Jersey, USA':    'MetLife Stadium',
+  'Miami':                       'Hard Rock Stadium',
+  'Miami, USA':                  'Hard Rock Stadium',
+}
+
 export const HOST_CITY_TIMEZONE = {
   'Mexico City':                 'America/Mexico_City',
   'Mexico City, Mexico':         'America/Mexico_City',

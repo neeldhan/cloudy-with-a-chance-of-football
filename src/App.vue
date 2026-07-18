@@ -42,16 +42,21 @@
           :class="{ active: activeTab === 'insights' }"
           @click="selectTab('insights')"
         >Insights</button>
+        <button
+          class="tab-button"
+          :class="{ active: activeTab === 'about' }"
+          @click="selectTab('about')"
+        >About</button>
       </div>
     </div>
   </nav>
 
-  <header v-if="activeTab !== 'insights'" class="app-header">
+  <header v-if="activeTab === 'bracket' || activeTab === 'schedule'" class="app-header">
     <h1>{{ activeTab === 'bracket' ? 'Knockout Bracket' : 'Group Stage Schedule' }}</h1>
     <p class="subtitle">Are factors such as heat and elevation making teams under- or over-perform at the World Cup? Let's see what the data shows us.</p>
   </header>
 
-  <div v-if="activeTab !== 'insights'" class="toggles-bar shine">
+  <div v-if="activeTab === 'bracket' || activeTab === 'schedule'" class="toggles-bar shine">
     <DisplayToggles
       :show-elevation="showElevation"
       :show-timezone="showTimezone"
@@ -63,19 +68,25 @@
   <BracketView   v-show="activeTab === 'bracket'"  :scores="scores" :show-elevation="showElevation" :show-timezone="showTimezone" :show-pot="showPot" />
   <ScheduleView  v-show="activeTab === 'schedule'" :scores="scores" :show-elevation="showElevation" :show-timezone="showTimezone" :show-pot="showPot" />
   <InsightsView  v-show="activeTab === 'insights'" :scores="scores" />
+  <AboutView     v-show="activeTab === 'about'" />
+
+  <footer class="site-footer">
+    <p>Copyright © 2026 Neel Dhanesha. All rights reserved. No part of this site may be reproduced without permission.</p>
+  </footer>
 </template>
 
 <script>
 import BracketView    from './components/BracketView.vue'
 import ScheduleView   from './components/ScheduleView.vue'
 import InsightsView   from './components/InsightsView.vue'
+import AboutView      from './components/AboutView.vue'
 import DisplayToggles from './components/DisplayToggles.vue'
 
 const SCORES_URL = import.meta.env.VITE_SCORES_URL
 const DISPLAY_PREFS_KEY = 'wc26DisplayPrefs'
 
 export default {
-  components: { BracketView, ScheduleView, InsightsView, DisplayToggles },
+  components: { BracketView, ScheduleView, InsightsView, AboutView, DisplayToggles },
 
   data() {
     return {

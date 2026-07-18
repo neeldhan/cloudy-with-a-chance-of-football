@@ -64,6 +64,7 @@
       <span class="meta-left">
         <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
         <span class="meta-lines">
+          <span v-if="stadium" class="meta-line">{{ stadium }}</span>
           <span class="meta-line">{{ match.city }}</span>
         </span>
       </span>
@@ -79,7 +80,7 @@
 </template>
 
 <script>
-import { TRAINING_CLIMATE, HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS, HOST_CITY_ELEVATION, HOST_CITY_TIMEZONE, TEAM_TIMEZONE } from '../data/climate.js'
+import { TRAINING_CLIMATE, HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS, HOST_CITY_ELEVATION, HOST_CITY_STADIUM, HOST_CITY_TIMEZONE, TEAM_TIMEZONE } from '../data/climate.js'
 import { tempToColor, isPastDate, tzDiffHours } from '../utils/temperature.js'
 import { shouldFetchLiveTemp, fetchLiveTemp } from '../utils/openMeteo.js'
 import { teamPot } from '../data/seeding.js'
@@ -122,6 +123,15 @@ export default {
       const e = HOST_CITY_ELEVATION[this.match.city]
       if (e == null) return null
       return `${e.toLocaleString('en-US')}m`
+    },
+
+    // Group stage matches only ever had a city in the schedule data, not a
+    // stadium, unlike the bracket (KnockoutMatch.vue), where each match
+    // already carries its own stadium field. Same information, just looked
+    // up here instead of stored inline, since a given host city only ever
+    // has one World Cup venue this tournament.
+    stadium() {
+      return HOST_CITY_STADIUM[this.match.city] ?? null
     },
 
     matchScore() {

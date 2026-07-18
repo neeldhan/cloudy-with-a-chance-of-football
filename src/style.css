@@ -143,6 +143,20 @@ body::before {
   padding: 2.6rem 1rem 0.9rem;
 }
 
+/* Sitewide, outside every tab's own v-show block, so it's always visible
+   regardless of which tab is active rather than being part of any one
+   view. */
+.site-footer {
+  text-align: center;
+  padding: 1.5rem 1rem 2rem;
+}
+
+.site-footer p {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+}
+
 h1 {
   text-align: center;
   margin: 0 auto 0.6rem;

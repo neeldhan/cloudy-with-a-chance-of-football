@@ -25,7 +25,7 @@
         <div class="hero-card shine">
           <div class="hero-num">{{ insights.tzSpotlight.resilient ? insights.tzSpotlight.resilient.avgTzDiff.toFixed(1) : '—' }} <span class="hero-unit">h</span></div>
           <div class="hero-label">
-            <template v-if="insights.tzSpotlight.resilient">{{ insights.tzSpotlight.resilient.name }}'s avg timezone gap per match — and they qualified</template>
+            <template v-if="insights.tzSpotlight.resilient">{{ insights.tzSpotlight.resilient.name }}'s avg timezone gap per match, and they still qualified</template>
             <template v-else>Timezone gap for a qualified team</template>
           </div>
           <div class="hero-compare">
@@ -105,8 +105,8 @@
         <h3 class="sec-heading">Do high-elevation venues change the game?</h3>
         <p class="sec-body">
           Goals per game across venue elevation tiers.
-          Guadalajara (1,566m) produced the most defensive football of any venue —
-          just 1.5 goals per game. Mexico City sits even higher at 2,240m,
+          Guadalajara (1,566m) produced the most defensive football of any venue,
+          just 1.5 goals per game. Mexico City is even higher at 2,240m,
           the highest World Cup venue in history.
         </p>
 
@@ -609,8 +609,8 @@ export default {
       const comfortSuffix = comfortRatio == null
         ? ' across the 48-team field.'
         : comfortRatio >= 1
-          ? ` — a ${comfortRatio.toFixed(2)}× advantage across the 48-team field.`
-          : ` — a ${(1 / comfortRatio).toFixed(2)}× disadvantage across the 48-team field.`
+          ? `, a ${comfortRatio.toFixed(2)}× advantage across the 48-team field.`
+          : `, a ${(1 / comfortRatio).toFixed(2)}× disadvantage across the 48-team field.`
       const climateComfort = {
         tag: 'Climate Finding',
         team: 'Climate Comfort Boosts Win Rate',
@@ -640,7 +640,7 @@ export default {
           tag: 'Climate Finding',
           team: maxPts <= 1 ? 'Climate Extremes Sink Group Stage Hopes' : "Climate Extremes Don't Guarantee Elimination",
           stat: `Worst ${cohort.length} gap${cohort.length === 1 ? '' : 's'} (≥${cohortFloor.toFixed(1)}°C): ${rangeLabel}`,
-          body: `The ${cohort.length} team${cohort.length === 1 ? '' : 's'} with the largest average climate mismatch — ${cohortFloor.toFixed(1)}°C or more — ${cohort.length === 1 ? 'has' : 'have'} scored ${rangeLabel} across their group matches so far. `
+          body: `The ${cohort.length} team${cohort.length === 1 ? '' : 's'} with the largest average climate mismatch (${cohortFloor.toFixed(1)}°C or more) ${cohort.length === 1 ? 'has' : 'have'} scored ${rangeLabel} across their group matches so far. `
             + (maxPts <= 1 ? 'A striking tipping point for climate adaptation.' : 'Results at the extreme end have been more mixed than a clean tipping point would suggest.'),
         }
       }
@@ -651,7 +651,7 @@ export default {
         tag: 'Elevation Finding',
         team: 'Altitude Suppresses Scoring',
         stat: `${headlines.midAltGoals.toFixed(2)} gpg vs. ${headlines.seaLevelGoals.toFixed(2)} at sea level`,
-        body: `Guadalajara (1,566m) has averaged ${headlines.midAltGoals.toFixed(2)} goals per game so far, versus ${headlines.seaLevelGoals.toFixed(2)} at sea-level venues. Mexico City, at 2,240m, is the highest World Cup venue in history — averaging ${headlines.highAltGoals.toFixed(2)} goals per game there.`,
+        body: `Guadalajara (1,566m) has averaged ${headlines.midAltGoals.toFixed(2)} goals per game so far, versus ${headlines.seaLevelGoals.toFixed(2)} at sea-level venues. Mexico City, at 2,240m, is the highest World Cup venue in history, averaging ${headlines.highAltGoals.toFixed(2)} goals per game there.`,
       }
 
       const tzGap = Math.abs(headlines.tzQualifiedAvg - headlines.tzEliminatedAvg)
@@ -659,7 +659,7 @@ export default {
         tag: 'Timezone Finding',
         team: 'Timezone Fatigue Tracks With Elimination',
         stat: `Qualifiers avg ${headlines.tzQualifiedAvg.toFixed(1)}h · Eliminated avg ${headlines.tzEliminatedAvg.toFixed(1)}h`,
-        body: `Teams that have advanced from the group stage have averaged ${headlines.tzQualifiedAvg.toFixed(1)}h of timezone adjustment per match, versus ${headlines.tzEliminatedAvg.toFixed(1)}h for eliminated sides — a ${tzGap.toFixed(1)}h gap between the two groups.`,
+        body: `Teams that have advanced from the group stage have averaged ${headlines.tzQualifiedAvg.toFixed(1)}h of timezone adjustment per match, versus ${headlines.tzEliminatedAvg.toFixed(1)}h for eliminated sides, a ${tzGap.toFixed(1)}h gap between the two groups.`,
       }
 
       // Pot 1 (strongest seed) vs. Pot 4 (weakest) average points — the
@@ -676,7 +676,7 @@ export default {
           stat: `Pot 1 avg ${pot1.avgPoints.toFixed(1)} pts vs. Pot 4 avg ${pot4.avgPoints.toFixed(1)} pts`,
           body: `Teams from Pot 1, the strongest seeds in December's draw, have averaged ${pot1.avgPoints.toFixed(1)} group-stage points so far, versus ${pot4.avgPoints.toFixed(1)} for Pot 4. `
             + (seedGap > 0
-              ? `A ${seedGap.toFixed(1)}-point gap in the seeds' favour — the draw pots have been a reasonable predictor of who'd do well.`
+              ? `A ${seedGap.toFixed(1)}-point gap in the seeds' favour: the draw pots have been a reasonable predictor of who'd do well.`
               : `Pot 4 is actually ahead by ${Math.abs(seedGap).toFixed(1)} points, which is the opposite of what the seeding would suggest.`),
         }
       }
@@ -705,7 +705,7 @@ export default {
           stat: `Top ${topRanked.length} ranked avg ${topAvg.toFixed(1)} pts vs. bottom ${bottomRanked.length} avg ${bottomAvg.toFixed(1)} pts`,
           body: `The ${topRanked.length} teams currently ranked highest in the FIFA World Ranking have averaged ${topAvg.toFixed(1)} group-stage points so far, versus ${bottomAvg.toFixed(1)} for the ${bottomRanked.length} lowest-ranked teams in the 48-team field. `
             + (rankGap > 0
-              ? `A ${rankGap.toFixed(1)}-point gap in the higher-ranked teams' favour — form and world ranking have tracked results about as well as the draw pots did.`
+              ? `A ${rankGap.toFixed(1)}-point gap in the higher-ranked teams' favour: form and world ranking have tracked results about as well as the draw pots did.`
               : `The lower-ranked group is actually ahead by ${Math.abs(rankGap).toFixed(1)} points, the opposite of what current form would suggest.`),
         }
       }
