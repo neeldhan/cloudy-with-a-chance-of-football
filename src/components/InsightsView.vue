@@ -1439,10 +1439,15 @@ export default {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
+  margin-top: 1.1rem;
 }
 
+/* Rounder than the original 6px — doesn't need to match the parent
+   .ins-section's own 20px exactly since this card is much smaller, but
+   6px read as sharp/flat next to it rather than a smaller version of
+   the same shape language. */
 .story {
-  border-radius: 6px;
+  border-radius: 14px;
   padding: 0.85rem 1rem;
   border: 1px solid transparent;
 }
