@@ -284,7 +284,7 @@
         </div>
 
         <div class="climate-chart" ref="seedTeamChart">
-          <p class="elev-chart-title">Every team, by points, pot and current FIFA rank</p>
+          <p class="elev-chart-title">Every team, by points, pot, and current FIFA rank</p>
           <div class="cc-colheads seed-colheads">
             <button class="col-sort-btn" :class="{ 'col-active': seedSort.key === 'name' }" @click="setSort(seedSort, 'name')">Team <span class="sort-icon">{{ sortIcon(seedSort, 'name') }}</span></button>
             <button class="col-sort-btn" :class="{ 'col-active': seedSort.key === 'P' }" @click="setSort(seedSort, 'P')">Points <span class="sort-icon">{{ sortIcon(seedSort, 'P') }}</span></button>
