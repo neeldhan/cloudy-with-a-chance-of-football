@@ -56,14 +56,15 @@ There's also an **Insights** tab that turns the raw results into analysis: it cr
 ### Core
 
 * **Interactive knockout bracket** covering all six rounds — Round of 32 through to the Final — with match numbers, dates, stadiums, and host city temperatures
-* **Full group stage schedule** — all 72 matches across 12 groups (A–L), with past matches highlighted
+* **Full group stage schedule** — all 72 matches across 12 groups (A–L), with stadiums, past matches highlighted
 * **Live scores** — finished and in-progress match scores fetched automatically from football-data.org every 60 seconds, with a pulsing LIVE badge during in-play matches
 * **Auto winner highlighting** — once a match has an official score, the winning team gets a gold outline and gold text, layered on top of (not replacing) their climate-colour pill, so the temperature info survives a result
 
 ### Climate Explorer
 
 * **Training climate temperatures** displayed on every team as a colour-coded pill, using a blue → red gradient (cold → hot climate)
-* **FIFA seeding pot** — every team's 2026 draw pot (1, strongest, through 4) shown as a small badge before their name; see [FIFA Seeding](#fifa-seeding) for the analysis this feeds
+* **FIFA seeding pot and current world ranking**: every team's 2026 draw pot (1, strongest, through 4) and current FIFA World Ranking shown as one combined badge before their name (e.g. `P1 · #7`); see [FIFA Seeding](#fifa-seeding) for the analysis this feeds
+* **Home elevation**: each team's training-base elevation, plus how it compares to the match venue, shown as its own badge (e.g. `Toronto, 76m (+61m)`); see [Home Elevation](#home-elevation) below for sourcing notes
 * **Host city average July temperatures** shown on every match card
 * **Real-time match-day weather** — for any match on or before tomorrow (that includes every match already played, not just yesterday's), the actual forecast/historical temperature for the host city is fetched live from Open-Meteo and displayed alongside the historical average
 * **Display toggles** — three switches (Elevation, Timezone, FIFA Seeding) let you turn off what you don't want cluttering the match cards; state persists to `localStorage`
@@ -76,10 +77,15 @@ There's also an **Insights** tab that turns the raw results into analysis: it cr
 
 * **Computed headline stats** — the app tallies every finished group stage match to answer the questions the whole project is built around: what's the win rate for teams playing within 8°C of their home climate versus beyond it, how do goals-per-game change with venue altitude, and how much bigger is the average timezone gap for eliminated teams than for qualifiers
 * **Climate comfort chart** — a sorted bar for every team showing the average temperature gap between their training base and the venues they played in, coloured blue (close to home) to red (far out of comfort), with qualified teams highlighted
-* **FIFA Seeding chart** — average group-stage points per draw pot, plus "biggest riser" and "biggest faller" spotlight teams, answering whether the December 2025 seeding actually predicted anything; see [FIFA Seeding](#fifa-seeding) for exactly how it's computed
-* **"Core Findings" cards** — five always-visible findings (climate comfort, altitude, timezone fatigue, climate extremes, seeding) computed live from the same data; see [Computed Insights](#computed-insights) for exactly how each one is derived
+* **FIFA Seeding chart** — average group-stage points per draw pot, plus "biggest riser" and "biggest faller" spotlight teams, answering whether the December 2025 seeding actually predicted anything, and a per-team table sortable by Team, Points, Pot, or current FIFA Rank; see [FIFA Seeding](#fifa-seeding) for exactly how it's computed
+* **"Core Findings" cards** — six always-visible findings, each tagged by category (Climate, Elevation, Timezone, Seeding): climate comfort, altitude, timezone fatigue, climate extremes, draw-pot seeding, and current FIFA ranking; see [Computed Insights](#computed-insights) for exactly how each one is derived
 * **High-res chart export** — every chart on the Insights tab (Climate Comfort, Altitude Factor, Timezone Fatigue, and both FIFA Seeding charts) can be exported as a standalone PNG (transparent background) or JPG image at 3x resolution, with an "As of [date]" stamp baked into the image
-* **Capacities export** — every computed stat (Core Findings, elevation tiers, seeding pots, and each team's climate/timezone gap) can be copied or downloaded as Capacities-ready markdown, one YAML frontmatter block per item; see [Capacities Export](#capacities-export) for the exact shape
+* **Capacities export** — every computed stat (Core Findings, elevation tiers, seeding pots, each team's climate/timezone gap, and each team's current pot/rank and home elevation) can be copied or downloaded as Capacities-ready markdown, one YAML frontmatter block per item; see [Capacities Export](#capacities-export) for the exact shape
+
+### About Page
+
+* A fourth tab covering what the project is, how the Insights tab's numbers are actually computed, every API and data source with a working link, a corrections section for the handful of data points that are best estimates rather than confirmed figures, and credits
+* A sitewide copyright footer, shown on every tab rather than being part of any one view
 
 ### Mobile
 
@@ -163,7 +169,8 @@ The Cloudflare Worker is the one piece of server-side code in the project. It ac
 |---|---|---|
 | Frontend framework | Vue 3 (Options API) | Component-based UI |
 | Build tool | Vite 5 | Dev server and production bundler |
-| Styling | Global CSS (no scoped styles, except InsightsView.vue) | Shared classes across components |
+| Styling | Global CSS (no scoped styles, except InsightsView.vue and AboutView.vue) | Shared classes across components |
+| Team flags | [flag-icons](https://github.com/lipis/flag-icons) | Bundled SVG flags, no live fetch or rate limit |
 | Chart image export | [html2canvas](https://html2canvas.hertzen.com/) | Rasterizes Insights charts to PNG/JPG |
 | Backend proxy | Cloudflare Workers | Secure API key proxy with edge caching |
 | Live weather | Open-Meteo API | No-auth match-day temperature fetches |
@@ -175,16 +182,21 @@ The Cloudflare Worker is the one piece of server-side code in the project. It ac
 
 ```
 App.vue                        – tab navigation, score polling (60s interval),
-│                                 display-toggle state (elevation/timezone/pot)
+│                                 display-toggle state (elevation/timezone/pot),
+│                                 sitewide copyright footer
 ├── DisplayToggles.vue         – renders the toggle switches themselves, stacked
 │                                 under the nav tabs in the same toolbar card
 ├── BracketView.vue            – auto-population via bracketProgression.js
-│   └── KnockoutMatch.vue      – score display, winner highlight, pot badge
+│   └── KnockoutMatch.vue      – score display, winner highlight, pot/rank badge,
+│                                 elevation badge
 ├── ScheduleView.vue           – passes scores + display-toggle props to groups
 │   └── GroupSection.vue       – group title and team list
-│       └── GroupMatch.vue     – score display, winner highlight, pot badge
-└── InsightsView.vue           – computed stats, climate/altitude/timezone/seeding
-                                  charts, Core Findings, chart export, Capacities export
+│       └── GroupMatch.vue     – score display, winner highlight, pot/rank badge,
+│                                 elevation badge
+├── InsightsView.vue           – computed stats, climate/altitude/timezone/seeding
+│                                 charts, Core Findings, chart export, Capacities export
+└── AboutView.vue              – project overview, methodology, data sources,
+                                  corrections, acknowledgements
 ```
 
 The display-toggle switches live in the same toolbar card as the tab nav (stacked below it with a divider) rather than beside it, deliberately: hiding them on the Insights tab only ever changes the card's height, never its width, so the tab buttons never shift position when you switch tabs.
@@ -198,8 +210,11 @@ src/data/
 ├── groups.js       – GROUP_TEAMS (A–L, 48 teams) and sorted TEAMS array
 ├── bracket.js      – 32 knockout matches with pre-computed isoDate and matchId
 ├── groupStage.js   – 72 group matches with pre-computed isoDate and matchId
-├── climate.js      – TRAINING_CLIMATE (~50 teams), HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS
-└── seeding.js       – TEAM_POT (all 48 teams → their 2026 draw pot, 1-4)
+├── climate.js      – TRAINING_CLIMATE (~50 teams, incl. each team's elevM),
+│                      HOST_CITY_TEMPS_JULY, HOST_CITY_COORDS, HOST_CITY_ELEVATION,
+│                      HOST_CITY_STADIUM, HOST_CITY_TIMEZONE
+├── seeding.js      – TEAM_POT (all 48 teams → their 2026 draw pot, 1-4)
+└── rankings.js     – TEAM_RANK (all 48 teams → current FIFA World Ranking position)
 ```
 
 ### Live Scores Flow
@@ -233,7 +248,7 @@ Everything on the Insights tab is plain JavaScript arithmetic over the live scor
 
 | Field | What it is |
 |---|---|
-| `teamsByDelta` / `teamsByTz` | Every team with at least one finished match, each with `avgDelta` (mean absolute gap between training temperature and matchday venue temperature, °C) and `avgTzDiff` (mean absolute timezone gap, hours) — sorted for the climate and timezone charts respectively |
+| `teamsByDelta` / `teamsByTz` | Every team with at least one finished match, each with `avgDelta` (mean absolute gap between training temperature and matchday venue temperature, °C), `avgTzDiff` (mean absolute timezone gap, hours), `pot`, `rank` (current FIFA World Ranking position, from `TEAM_RANK`), `elevM` (training-base elevation), and `trainCity` — sorted for the climate and timezone charts respectively |
 | `elevTiers` | Goals-per-game bucketed into four venue elevation bands (sea level / low / mid / high). Guadalajara (1,566m) falls in "mid"; Mexico City (2,240m, the highest World Cup venue ever hosted) falls in "high" |
 | `headlines` | The hero-stat aggregates: climate comfort/discomfort win rate (a team counts as "comfortable" if its average gap is under `COMFORT_THRESHOLD`, currently 8°C), goals/game per elevation tier, and average timezone gap for qualified vs. eliminated teams |
 | `tzSpotlight` | Three specific teams — `resilient`, `homeComfort`, `furthest` — picked from the per-team data (see below). Powers both the timezone hero card and the three callout cards, so they can never disagree with each other |
@@ -246,21 +261,30 @@ Everything on the Insights tab is plain JavaScript arithmetic over the live scor
 - `homeComfort` — the team with the *smallest* average timezone gap of anyone, ties broken by points (effectively "played at home")
 - `furthest` — the largest average timezone gap among *eliminated* teams; falls back to the overall largest gap early in the tournament, before any team has actually been eliminated yet
 
-**"Core Findings" cards** (`permanentInsights()` in `InsightsView.vue`) are five always-visible cards built directly from the fields above. They are recomputed on every render — nothing here is cached or stored:
+**"Core Findings" cards** (`permanentInsights()` in `InsightsView.vue`) are six always-visible cards built directly from the fields above, each carrying a category tag (Climate/Elevation/Timezone Finding, or Seeding Finding for the two seeding-related ones) and grouped by that category in the 2-column grid rather than computation order. They are recomputed on every render — nothing here is cached or stored:
 
 1. **Climate Comfort** — `headlines.comfortWinPct` vs. `discomfortWinPct`, with their ratio (skipped if there's no discomfort-win data yet, to avoid a divide-by-zero).
-2. **Altitude Suppresses Scoring** — `headlines.midAltGoals` (Guadalajara) vs. `seaLevelGoals`, mentioning `highAltGoals` (Mexico City) too.
-3. **Timezone Fatigue** — `headlines.tzQualifiedAvg` vs. `tzEliminatedAvg`, and the gap between them.
-4. **Climate Extremes** — deliberately *not* a fixed °C threshold. It takes the worst 25% of teams by climate gap (at least one team, so this card can never disappear even early in the tournament) and reports their point range. The closing sentence is adaptive: it says the pattern is "a striking tipping point" only if every team in that worst-quartile cohort scored ≤1 point, and otherwise honestly says results have been "more mixed than a clean tipping point would suggest." A fixed threshold risks going quiet (no team crosses it yet) or eventually asserting a clean pattern that stops being true — the floating cohort avoids both failure modes at the cost of a less catchy, non-fixed headline number.
+2. **Climate Extremes** — deliberately *not* a fixed °C threshold. It takes the worst 25% of teams by climate gap (at least one team, so this card can never disappear even early in the tournament) and reports their point range. The closing sentence is adaptive: it says the pattern is "a striking tipping point" only if every team in that worst-quartile cohort scored ≤1 point, and otherwise honestly says results have been "more mixed than a clean tipping point would suggest." A fixed threshold risks going quiet (no team crosses it yet) or eventually asserting a clean pattern that stops being true — the floating cohort avoids both failure modes at the cost of a less catchy, non-fixed headline number.
+3. **Altitude Suppresses Scoring** — `headlines.midAltGoals` (Guadalajara) vs. `seaLevelGoals`, mentioning `highAltGoals` (Mexico City) too.
+4. **Timezone Fatigue** — `headlines.tzQualifiedAvg` vs. `tzEliminatedAvg`, and the gap between them.
 5. **Seeding Holds Up** — `potTiers[0].avgPoints` (Pot 1) vs. `potTiers[3].avgPoints` (Pot 4), skipped until both pots have at least one finished match. Says whether the gap actually favours the stronger seeds, since it's entirely possible for Pot 4 to be ahead.
+6. **Current Ranking Also Predicts Results**: the live-signal counterpart to Seeding Holds Up. Splits the 48-team field into the best- and worst-ranked quartiles by current FIFA World Ranking (rather than the frozen December 2025 draw pot) and compares their average group-stage points.
 
 ### FIFA Seeding
 
 Every team's 2026 World Cup draw pot (1 = strongest seed, 4 = weakest) is hardcoded in [`src/data/seeding.js`](src/data/seeding.js) (`TEAM_POT`), since neither football-data.org nor any API this app already talks to exposes FIFA ranking or seeding data. The pots come from the actual December 5, 2025 draw, based on the FIFA Men's World Ranking of November 19, 2025; Pot 4 also includes six teams that were still playoff-pending at draw time (four UEFA play-off winners, two inter-confederation play-off winners) and were seeded as anonymous Pot 4 slots regardless of their eventual individual ranking. All 48 names were cross-checked against `groups.js` for an exact match.
 
-The pot badge (`P1` through `P4`) shown before each team name on the Bracket and Schedule tabs, and the FIFA Seeding chart and Core Finding on the Insights tab, all read from this same file — there's no separate, finer-grained numeric ranking used anywhere, deliberately: FIFA's ranking does give a precise 1-48 number for 42 of the 48 teams, but the six playoff qualifiers never had an individual draw-seeding rank of their own, so a full 1-48 list would mean splicing in a different, later ranking snapshot for those six specifically. Pot number is the one figure that's actually complete and official for all 48 teams.
+Pot is a historical fact fixed at the draw and deliberately never changes after the fact. It's a different question from "where is this team ranked *right now*", which keeps updating throughout the tournament (last official FIFA refresh 11 June 2026). That number is tracked separately in [`src/data/rankings.js`](src/data/rankings.js) (`TEAM_RANK`), transcribed directly off FIFA's own ranking page rather than a secondary source, filtered down to just the 48 qualified teams, so the rank numbers aren't contiguous 1-48, they're each team's true world ranking with everyone outside this tournament left out.
 
-The FIFA Seeding section of the Insights tab has two charts: the 4-bar average-points-per-pot chart described above, and a second per-team table (sortable by Team, Points, or Pot) using the same layout as the Climate Comfort and Timezone Fatigue tables, just with the bar and the sort axis swapped — Points is the bar here, Pot is the thin sortable column, and the bar is coloured by pot rather than by the value it represents, so the seed tier stays visible no matter which column it's sorted by.
+The pot badge shown before each team name on the Bracket and Schedule tabs combines both figures (`P1 · #7`), pot first, rank second. The FIFA Seeding chart and per-team table on the Insights tab, and the "Seeding Holds Up" / "Current Ranking Also Predicts Results" Core Findings, read from `TEAM_POT` and `TEAM_RANK` respectively, answering the same "did the pre-tournament signal predict results" question for both the frozen draw seed and the live ranking.
+
+The FIFA Seeding section of the Insights tab has two charts: the 4-bar average-points-per-pot chart described above, and a second per-team table sortable by Team, Points, Pot, or Rank, using the same layout as the Climate Comfort and Timezone Fatigue tables, just with the bar and the sort axis swapped. Points is the bar here, Pot and Rank are the two thin sortable columns, each colour-coded on its own scale (Pot: purple-to-blue; Rank: green-to-grey, inverted since a low rank number is the good end), so the seed tier and current form both stay visible no matter which column it's sorted by.
+
+### Home Elevation
+
+Each team's training-base elevation (`elevM` in [`src/data/climate.js`](src/data/climate.js)'s `TRAINING_CLIMATE`) was compiled from Wikipedia infobox data for the specific announced training city, cross-checked against independent geographic lookups. Six of the 48 training towns (Algiers, Praia, Prampram, Bingerville, Wellington, and Ypané) don't have a single authoritative elevation on record, or the sources that do exist disagree with each other by a wide margin, so those six are best estimates rather than confirmed figures. See [GitHub issue #13](https://github.com/neeldhan/cloudy-with-a-chance-of-football/issues/13) for the full breakdown.
+
+Shown as its own badge on both bracket and schedule match cards: the training city's name, its elevation, and the delta versus the match venue in brackets (e.g. `Toronto, 76m (+61m)`), tied to the same Elevation toggle that controls the venue elevation chip in the match header. The delta is training-city elevation minus venue elevation, so a positive number means the team trains higher than where they're playing.
 
 ### Chart Image Export
 
@@ -270,7 +294,7 @@ Exports render at a fixed 3x scale regardless of the chart's on-screen pixel siz
 
 ### Capacities Export
 
-The "Export to Capacities" button builds a single markdown document out of every computed stat on the Insights tab (the 5 Core Findings, the 4 elevation tiers, the 4 seeding pots, and every team's climate and timezone gap — around 110 items total) via `buildCapacitiesMarkdown()` in [`src/utils/capacitiesExport.js`](src/utils/capacitiesExport.js).
+The "Export to Capacities" button builds a single markdown document out of every computed stat on the Insights tab (the 6 Core Findings, the 4 elevation tiers, the 4 seeding pots, every team's climate and timezone gap, and every team's current pot/rank and home elevation, around 200 items total) via `buildCapacitiesMarkdown()` in [`src/utils/capacitiesExport.js`](src/utils/capacitiesExport.js). The per-team pot/rank items are tagged `Ranking` rather than `Seeding` (used above for the 4 pot-tier aggregates), since the two would otherwise collide under the same tag with differently-shaped `team` values ("Pot 1" vs. an actual country name).
 
 Each item comes out as its own YAML frontmatter block (`type` / `tag` / `team` / `stat` / `body` / `date`) with no free-text body underneath, matching how [Capacities'](https://capacities.io/) markdown importer maps named frontmatter properties directly onto a typed object's fields rather than dumping everything into one page. Available as a copy-to-clipboard or a downloaded `.md` file, both producing the same document.
 
@@ -321,15 +345,19 @@ Each team's name appears in a colour-coded pill based on their training climate:
 - **Blue pills** — cool climate (e.g. Scotland 17°C)
 - **Orange/red pills** — hot climate (e.g. Qatar 38°C)
 
-The match card also shows the host city's average July temperature, and for recent matches, the actual forecast temperature on match day fetched in real time. A small "P1" through "P4" badge before each team's name shows their FIFA draw pot, 1 being the strongest seed.
+The match card also shows the host city's average July temperature, and for recent matches, the actual forecast temperature on match day fetched in real time. A small badge before each team's name shows their FIFA draw pot and current FIFA World Ranking (e.g. `P1 · #7`), 1 being the strongest seed and a lower rank number being higher-ranked. A separate badge shows their training city, its elevation, and how that compares to the match venue.
 
 The **Elevation**, **Timezone**, and **FIFA Seeding** switches near the top of the page (Bracket and Schedule tabs only) let you turn off whichever of those you don't want cluttering the match cards; your choice is remembered on your next visit.
 
 ### Exploring the Insights Tab
 
-Switch to the **Insights** tab. At the top are headline figures computed from every finished group stage match — the climate-comfort win rate, goals-per-game by altitude, and the timezone-travel gap between qualifiers and eliminated teams — followed by a per-team climate comfort chart you can sort by team, temperature gap, or points. Further down are the Altitude Factor, Timezone Fatigue, and FIFA Seeding charts, then the "Core Findings" cards, which surface the same headline patterns (including seeding) as short written summaries.
+Switch to the **Insights** tab. At the top are headline figures computed from every finished group stage match — the climate-comfort win rate, goals-per-game by altitude, and the timezone-travel gap between qualifiers and eliminated teams — followed by a per-team climate comfort chart you can sort by team, temperature gap, or points. Further down are the Altitude Factor, Timezone Fatigue, and FIFA Seeding charts (the last with a Rank column alongside Pot), then the "Core Findings" cards, which surface the same headline patterns as short written summaries grouped by category.
 
 Each chart has an **Export** dropdown for a standalone PNG or JPG image of just that chart. The **Export to Capacities** button near the top of the tab (hover or focus the adjacent "What's this?" text for a quick explainer) bundles every computed stat on the page into Capacities-ready markdown, either copied to your clipboard or downloaded as a `.md` file.
+
+### Reading the About Page
+
+Switch to the **About** tab for a plain-language rundown of what the project is, how the Insights tab's numbers are actually computed, every API and data source it draws from with a working link, and a corrections section flagging the handful of figures that are best estimates rather than confirmed. Worth a read before citing anything from this app elsewhere.
 
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
 
@@ -415,6 +443,9 @@ If you discover a team name mismatch (a match with a known score that isn't appe
 
 * [football-data.org API v4 documentation](https://www.football-data.org/documentation/quickstart)
 * [Open-Meteo API documentation](https://open-meteo.com/en/docs)
+* [FIFA Men's World Ranking](https://inside.fifa.com/fifa-world-ranking/men) — source for current team rankings (`src/data/rankings.js`)
+* [Wikipedia: FIFA World Rankings](https://en.wikipedia.org/wiki/FIFA_World_Rankings) — cross-check for current rankings, and infobox source for training-city elevations
+* [flag-icons](https://github.com/lipis/flag-icons) — bundled SVG flag library
 * [Cloudflare Workers documentation](https://developers.cloudflare.com/workers/)
 * [Vite environment variables](https://vitejs.dev/guide/env-and-mode)
 * [Vue 3 Options API](https://vuejs.org/guide/introduction.html)
@@ -433,9 +464,10 @@ If you discover a team name mismatch (a match with a known score that isn't appe
 * **football-data.org** for providing a free tier API with comprehensive World Cup data
 * **Open-Meteo** for a genuinely free, no-auth-required weather API
 * **Cloudflare** for making serverless edge computing accessible and free at this scale
+* **[lipis/flag-icons](https://github.com/lipis/flag-icons)** for a free, self-hostable flag library
 
 [<sub><sup>Back to top</sup></sub>](#world-cup-2026-heat-bracket)
 
 ---
 
-**Last Updated: 17 July 2026**
+**Last Updated: 19 July 2026**

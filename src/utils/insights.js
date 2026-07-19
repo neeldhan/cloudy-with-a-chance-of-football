@@ -128,6 +128,8 @@ export function computeInsights(scores) {
             deltas: [], tzAbsDiffs: [], qualified: qualifiers.has(team), trainTemp: trainT,
             pot: TEAM_POT[team] ?? null,
             rank: TEAM_RANK[team] ?? null,
+            elevM: TRAINING_CLIMATE[team]?.elevM ?? null,
+            trainCity: TRAINING_CLIMATE[team]?.city ?? null,
           }
         }
         const ts = teamMap[team]

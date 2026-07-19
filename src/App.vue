@@ -71,7 +71,7 @@
   <AboutView     v-show="activeTab === 'about'" />
 
   <footer class="site-footer">
-    <p>Copyright © 2026 Neel Dhanesha. All rights reserved. No part of this site may be reproduced without permission.</p>
+    <p>Copyright © 2026 Neel Dhanesha and Vikas Bhatia. All rights reserved. No part of this site may be reproduced without permission.</p>
   </footer>
 </template>
 

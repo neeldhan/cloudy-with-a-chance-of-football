@@ -84,5 +84,37 @@ export function buildCapacitiesMarkdown(insights, findings) {
     })
   }
 
+  // Pot and current FIFA rank, per team. Tagged "Ranking" rather than
+  // "Seeding" (used above for the 4 pot-tier aggregates) so the two don't
+  // collide under the same tag with differently-shaped `team` values
+  // ("Pot 1" vs. an actual country name).
+  for (const team of insights.teamsByDelta) {
+    if (team.pot == null && team.rank == null) continue
+    const potLabel  = team.pot != null ? `Pot ${team.pot}` : 'no pot on record'
+    const rankLabel = team.rank != null ? `#${team.rank} in the FIFA World Ranking` : 'not individually ranked'
+    items.push({
+      tag:  'Ranking',
+      team: team.name,
+      stat: `${potLabel} · ${team.rank != null ? '#' + team.rank : '—'}`,
+      body: `${team.name} is ${potLabel} in the December 2025 FIFA draw and is currently ${rankLabel}.`,
+      date,
+    })
+  }
+
+  // Training-base elevation, per team — a fixed fact about the team (unlike
+  // avgDelta/avgTzDiff, which are averaged across whichever venues they've
+  // actually played at), so this is exported once per team rather than
+  // tied to any particular match.
+  for (const team of insights.teamsByDelta) {
+    if (team.elevM == null) continue
+    items.push({
+      tag:  'Elevation',
+      team: team.name,
+      stat: `${team.elevM.toLocaleString('en-US')}m (${team.trainCity})`,
+      body: `${team.name} trains in ${team.trainCity}, ${team.elevM.toLocaleString('en-US')}m above sea level.`,
+      date,
+    })
+  }
+
   return items.map(toFrontmatterBlock).join('\n\n')
 }
